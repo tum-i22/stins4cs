@@ -101,6 +101,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Class.cs" />
     <Compile Include="Exploration.cs" />
     <Compile Include="ExtensionMethods.cs" />
     <Compile Include="Method.cs" />
