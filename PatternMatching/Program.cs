@@ -25,7 +25,7 @@ namespace PatternMatching
 
 
             // looping the source file
-            foreach (string file in Directory.EnumerateFiles(FolderPath, "*.cs"))
+            foreach (string file in Directory.EnumerateFiles(FolderPath, "*.cs",SearchOption.AllDirectories))
             {
                 Console.WriteLine("Inspecting file " + file);
                 List<string> results = new List<string>();

@@ -19,6 +19,8 @@ namespace SimpleRoslynAnalysis
         public String variableName { get; set; }
         public String ChallangeCode { get; set; }
 
+        public bool IsStaticClass { get; set; }
+
         public Exploration()
         {
             //this.ChallangeCodeList = new List<string>();
@@ -28,8 +30,6 @@ namespace SimpleRoslynAnalysis
             return this.NameSpace + "." + this.ClassName + "." + this.FunctionName;
         }
 
-     
-
-
+        public string FullClassName { get { return NameSpace + "." + ClassName; } }
     }
 }

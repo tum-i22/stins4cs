@@ -37,6 +37,12 @@ namespace SimpleRoslynAnalysis
                 XElement declaringType = memberUnderTest.Element("declaringType");
                 explorationObject.NameSpace = declaringType.Attribute("namespace").Value;
                 explorationObject.ClassName = declaringType.Attribute("name").Value;
+
+                if (declaringType.Parent.Attribute("static") != null)
+                {
+                    explorationObject.IsStaticClass = Convert.ToBoolean(declaringType.Parent.Attribute("static").Value);
+                }
+                
                 IEnumerable<XElement> generatedTests = exploration.Elements("generatedTest");
 
 
@@ -217,16 +223,22 @@ namespace SimpleRoslynAnalysis
 
                             if (codeLine.Contains(variableName + ","))
                             {
-
                                 codeLine = codeLine.Replace(variableName + ",", "");
                             }
                             else if (codeLine.Contains(variableName) && !codeLine.Trim().StartsWith(variableName)) // there are cases when they call the function directly
                             {
-
                                 codeLine = codeLine.Replace(variableName, "");
                             }
 
-                            codeLine = codeLine.Replace("this", variableName);
+                            //if static class this.m() ->className.m() 
+                            if(explorationObject.IsStaticClass)
+                            {
+                                codeLine = codeLine.Replace("this", explorationObject.FullClassName);
+                            }
+                            else
+                            {
+                                codeLine = codeLine.Replace("this", variableName);
+                            }
 
                         }
 
@@ -270,7 +282,7 @@ namespace SimpleRoslynAnalysis
 
                 if (useStackInspection)// added this setting to test the code without the if statement against pattern matching
                 {
-                    transformedCode.Insert(0, "if(!Environment.StackTrace.Contains(\"" + explorationObject.getFullName() + "\"))\n{\n");
+                    transformedCode.Insert(0, "if(!System.Environment.StackTrace.Contains(\"" + explorationObject.getFullName() + "\"))\n{\n");
                 }
                 //else {
                 //    transformedCode.Insert(0, "if(!Environment.StackTrace.Contains(\"" + explorationObject.getFullName() + "\"))\n{\n");
@@ -285,7 +297,38 @@ namespace SimpleRoslynAnalysis
                     transformedCode.Append("\n}");
                 }
 
-                transformedCode = transformedCode.Replace("s0", RandomString(random.Next(2, 4)));
+                //if contains s0 - definition of variable used to test (?!)
+                if (transformedCode.ToString().Contains("s0"))
+                {
+                    //this fixes the "undeclared variable" exception
+                    //caused by change of this.method -> varName.method without varName declaration
+                    //this is the actual declaration
+                    if (!explorationObject.IsStaticClass)
+                    {
+                        string randVar = RandomString(random.Next(2, 7));
+
+                        //check if the s0 has a declaration already to avoid duplicated declaration
+                        Regex reg = new Regex(@"[a-zA-Z]+ s0 = new [a-zA-Z]+\(\);");
+                        var match = reg.Matches(transformedCode.ToString());
+                        //if declaration does not exist -> declare
+                        if (match.Count == 0)
+                        {
+                            string line = String.Format("var {0} = new {1}();\n", randVar, explorationObject.FullClassName);
+                            transformedCode.Replace("{", "{\n" + line);
+                        }
+                        else //change existing declaration to use full class name Namespace.Class
+                        {
+                            transformedCode.Replace(explorationObject.ClassName, explorationObject.FullClassName);
+                        }
+                        //else -> just rename s0
+                        transformedCode = transformedCode.Replace("s0", randVar);
+                    }
+                    //if class is static -> this.TestMethodCall
+                    else
+                    {
+                        transformedCode = transformedCode.Replace("s0", explorationObject.ClassName);
+                    }
+                }
                 explorationObject.ChallangeCode = transformedCode.ToString();
 
                 //Console.WriteLine("trans" + transformedCode.ToString());

@@ -39,11 +39,11 @@ namespace SimpleRoslynAnalysis
 
 
         private static string RESPONSE_CODE_1_SOURCE = " ";
-        private static string RESPONSE_CODE_2_SOURCE = " Environment.Exit(0); ";
+        private static string RESPONSE_CODE_2_SOURCE = " System.Environment.Exit(0); ";
         private static string RESPONSE_CODE_3_SOURCE = @" Random r = new Random();
             System.Timers.Timer aTimer = new System.Timers.Timer(r.Next(1," + delayed_crash_upper_bound + @")*1000);
             aTimer.Elapsed += (sender, e) => {
-                Environment.Exit(0);
+                System.Environment.Exit(0);
             }; 
             aTimer.Enabled = true;";
 
@@ -414,7 +414,8 @@ namespace SimpleRoslynAnalysis
                 //Formatter.
                 // Format the document.
                 root = Formatter.Format(root, workspace, options);
-                File.WriteAllText((string)Properties.Settings.Default["Output_Dir"] + document.Name, root.ToFullString());
+                string fileContent = checkAndInsertUsings(disablePragmaWarningCS0618(root.ToFullString()));
+                File.WriteAllText((string)Properties.Settings.Default["Output_Dir"] + document.Name, fileContent);
             }// end of documents loop
 
             // add the factory class
@@ -765,6 +766,29 @@ namespace SimpleRoslynAnalysis
             return (primitveTypes.Contains(type.Trim().ToLower()));
 
         }
+
+        private static string checkAndInsertUsings(string fileContent)
+        {
+            string[] additionalUsings = { "using System.Collections;",
+                "using System.Text;",
+                "using System.Globalization;",
+                "using System.Collections.Generic;" };
+
+            foreach(var _using in additionalUsings)
+            {
+                if(!fileContent.Contains(_using))
+                {
+                    fileContent = _using + "\n" + fileContent;
+                }
+            }
+
+            return fileContent;
+        }
+
+        private static string disablePragmaWarningCS0618(string fileContent)
+        {
+            string warningDisabler = "\n#pragma warning disable CS0618 // Type or member is obsolete";
+            return warningDisabler + fileContent;
+        }
     }
 }
-
