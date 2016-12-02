@@ -243,7 +243,7 @@ namespace SimpleRoslynAnalysis
                         }
 
 
-                        else if (codeLine.Contains("Assert."))// this is the check statement
+                        if (codeLine.StartsWith("Assert."))// this is the check statement
                         {
                             if (!codeLine.EndsWith(";"))
                             {// cases when this goes to two lines
