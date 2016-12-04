@@ -1,5 +1,9 @@
-﻿using System;
+﻿using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -247,7 +251,17 @@ namespace SimpleRoslynAnalysis
                         {
                             if (!codeLine.EndsWith(";"))
                             {// cases when this goes to two lines
-                                codeLine = codeLine + " " + codeStatements[j + 1];
+                                Regex regex = new Regex(@"\((.+)*\);");
+                                var nextCodeLine = codeStatements[j + 1];
+                                Match match = regex.Match(nextCodeLine);
+                                if(match.Success)
+                                {
+                                    codeLine = codeLine + " " + match.Value;
+                                }
+                                else
+                                {
+                                    codeLine = codeLine + " " + codeStatements[j + 1];
+                                }
                                 codeStatements[j + 1] = "";
                             }
 
@@ -255,11 +269,10 @@ namespace SimpleRoslynAnalysis
                                                               //Assert.AreEqual<string>("01-Jan-01 12:00:00 AM", s);
 
                             {
-                                int position = codeLine.LastIndexOf(">");
-                                codeLine = codeLine.Substring(position + 1);
-                                codeLine = "\nif " + codeLine;
-                                codeLine = codeLine.Replace(",", " != ");
-                                codeLine = codeLine.Substring(0, codeLine.Count() - 1);
+                                var assertStatement = SyntaxFactory.ParseStatement(codeLine);
+                                var arguments = assertStatement.DescendantNodes().OfType<ArgumentSyntax>().ToArray();
+
+                                codeLine = String.Format("\nif ({0} != {1})",arguments[0].ToFullString(),arguments[1].ToFullString());
                                 codeLine = codeLine + " { RESPONSE } ";
                             }
                             else if (codeLine.Contains("IsNotNull") || codeLine.Contains("IsNull"))// TODO for void functions ; Assert.IsNotNull((object)s0);
