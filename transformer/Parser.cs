@@ -321,13 +321,13 @@ namespace SimpleRoslynAnalysis
                         string randVar = RandomString(random.Next(2, 7));
 
                         //check if the s0 has a declaration already to avoid duplicated declaration
-                        Regex reg = new Regex(@"[a-zA-Z]+ s0 = new [a-zA-Z]+\(\);");
+                        Regex reg = new Regex(@"(.)+ s0 = new (.)+\(\)\;");
                         var match = reg.Matches(transformedCode.ToString());
                         //if declaration does not exist -> declare
                         if (match.Count == 0)
                         {
-                            string line = String.Format("var {0} = new {1}();\n", randVar, explorationObject.FullClassName);
-                            transformedCode.Replace("{", "{\n" + line);
+                            string line = String.Format("\nvar {0} = new {1}();\n", randVar, explorationObject.FullClassName);
+                            transformedCode.Insert(1, line);
                         }
                         else //change existing declaration to use full class name Namespace.Class
                         {
