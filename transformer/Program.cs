@@ -421,7 +421,9 @@ namespace SimpleRoslynAnalysis
                 root = Formatter.Format(root, workspace, options);
                 string fileContent = checkAndInsertUsings(disablePragmaWarningCS0618(root.ToFullString()));
                 // sampleProjectToAnalyze.Documents.Where( doc => doc.)
-                string augmentedDocSavePath = String.Format("{0}{1}{2}", (string)Properties.Settings.Default["Output_Dir"], GenerateDocumentFolderPath(document.Folders),document.Name);
+                string augmentedDocSaveDir = String.Format("{0}{1}", (string)Properties.Settings.Default["Output_Dir"], GenerateDocumentFolderPath(document.Folders));
+                string augmentedDocSavePath = String.Format("{0}{1}", augmentedDocSaveDir, document.Name);
+                Directory.CreateDirectory(augmentedDocSaveDir);
                 File.WriteAllText(augmentedDocSavePath, fileContent);
             }// end of documents loop
 
