@@ -88,14 +88,13 @@ namespace SimpleRoslynAnalysis
                             .FirstOrDefault();
             List<Method> methodsList = new List<Method>();
 
-
             // this prints all documents in the project
             foreach (var document in sampleProjectToAnalyze.Documents)
             {
                 Console.WriteLine("documnet " + document.Name);
                 SyntaxTree documentTree = document.GetSyntaxTreeAsync().Result;
                 SemanticModel semanticModel = document.GetSemanticModelAsync().Result;
-                // todo will we have more than class, if we change this we need to change the way we write the classes
+                //TODO: will we have more than class, if we change this we need to change the way we write the classes
                 var firstClass = document.GetSyntaxRootAsync().Result.DescendantNodes().OfType<ClassDeclarationSyntax>().FirstOrDefault();
                 if (firstClass != null)
                 {
@@ -402,6 +401,12 @@ namespace SimpleRoslynAnalysis
                         root = root.ReplaceNodes(dict.Keys, (n1, n2) => dict[n1]).NormalizeWhitespace();
                         var compilationUnitSyntax = (CompilationUnitSyntax)root;
                         var newCompilationUnitSyntax = compilationUnitSyntax.AddUsings(items);
+                        //case: new usings do not have all usings needed
+                        //problem: missing reference error in files
+                        //solution: merge old an new usings, delete duplicates
+
+
+
                         root = root.ReplaceNode(compilationUnitSyntax, newCompilationUnitSyntax).NormalizeWhitespace();
 
                         documentTree = documentTree.WithRootAndOptions(root, documentTree.Options);
@@ -415,13 +420,26 @@ namespace SimpleRoslynAnalysis
                 // Format the document.
                 root = Formatter.Format(root, workspace, options);
                 string fileContent = checkAndInsertUsings(disablePragmaWarningCS0618(root.ToFullString()));
-                File.WriteAllText((string)Properties.Settings.Default["Output_Dir"] + document.Name, fileContent);
+                // sampleProjectToAnalyze.Documents.Where( doc => doc.)
+                string augmentedDocSavePath = String.Format("{0}{1}{2}", (string)Properties.Settings.Default["Output_Dir"], GenerateDocumentFolderPath(document.Folders),document.Name);
+                File.WriteAllText(augmentedDocSavePath, fileContent);
             }// end of documents loop
 
             // add the factory class
             CompilationUnitSyntax factoryClass = InsertFactoryClass(Parser.classesForFactory);
             File.WriteAllText((string)Properties.Settings.Default["Output_Dir"] + FactoryName + ".cs", factoryClass.ToFullString());
 
+        }
+
+        private static object GenerateDocumentFolderPath(IReadOnlyList<string> folders)
+        {
+            string path = "";
+            foreach(var folder in folders)
+            {
+                path += folder + @"\"; 
+            }
+
+            return path;
         }
 
         private static Method createReturnStatement(Method child, Method parent)
@@ -788,7 +806,7 @@ namespace SimpleRoslynAnalysis
         private static string disablePragmaWarningCS0618(string fileContent)
         {
             string warningDisabler = "\n#pragma warning disable CS0618 // Type or member is obsolete";
-            return warningDisabler + fileContent;
+            return warningDisabler + "\n" + fileContent;
         }
     }
 }
