@@ -39,7 +39,16 @@ namespace SimpleRoslynAnalysis
                 }
                 explorationObject.FunctionName = memberUnderTest.Attribute("name").Value;
                 XElement declaringType = memberUnderTest.Element("declaringType");
-                explorationObject.NameSpace = declaringType.Attribute("namespace").Value;
+                //case of nested classes in the cs file if does not have namespace
+                if (declaringType.Attribute("namespace") == null)
+                {
+                    explorationObject.NameSpace = getNestedClassNamespace(declaringType);
+                }
+                else
+                {
+                    explorationObject.NameSpace = declaringType.Attribute("namespace").Value;
+                }
+                
                 explorationObject.ClassName = declaringType.Attribute("name").Value;
 
                 if (declaringType.Parent.Attribute("static") != null)
@@ -120,7 +129,7 @@ namespace SimpleRoslynAnalysis
                 **/
                 Console.WriteLine("one passing exploration in report for " + explorationObject.getFullName());
                 string variableName = "s0"; // normally its s0 unless we are in the special case of using
-                String[] codeStatements = codeStr.Split(new string[] { "\n" }, StringSplitOptions.RemoveEmptyEntries);
+                List<string> codeStatements = codeStr.Split(new string[] { "\n" }, StringSplitOptions.RemoveEmptyEntries).ToList();
                 bool variableNameSet = false;
 
                 if (codeStr.Contains(pex_creation_tag))
@@ -249,21 +258,13 @@ namespace SimpleRoslynAnalysis
 
                         if (codeLine.StartsWith("Assert."))// this is the check statement
                         {
-                            if (!codeLine.EndsWith(";"))
-                            {// cases when this goes to two lines
-                                Regex regex = new Regex(@"\((.+)*\);");
-                                var nextCodeLine = codeStatements[j + 1];
-                                Match match = regex.Match(nextCodeLine);
-                                if(match.Success)
-                                {
-                                    codeLine = codeLine + " " + match.Value;
-                                }
-                                else
-                                {
-                                    codeLine = codeLine + " " + codeStatements[j + 1];
-                                }
-                                codeStatements[j + 1] = "";
+                            //if method call is several lines long, get it all together.
+                            while (!codeLine.EndsWith(";"))
+                            {
+                                codeLine += codeStatements[j + 1];
+                                codeStatements.RemoveAt(j + 1);
                             }
+                            codeStatements[j] = codeLine;
 
                             if (codeLine.Contains("AreEqual"))// this is a comparison for the type functions; 
                                                               //Assert.AreEqual<string>("01-Jan-01 12:00:00 AM", s);
@@ -355,6 +356,26 @@ namespace SimpleRoslynAnalysis
 
             return explorationList;
 
+        }
+
+        private string getNestedClassNamespace(XElement declaringType)
+        {
+            //if the object does has a namespace -> return fullNameSpace = namespace + class
+            if (declaringType.Attributes().Where(atr => atr.Name == "namespace").Count() > 0)
+            {
+                string className = declaringType.Attribute("name").Value;
+                string namespaceName = declaringType.Attribute("namespace").Value;
+                return namespaceName + "." + className + ".";
+            }
+            //otherwise -> go deeper and check if it has a namespace
+            else
+            {
+                var childNode = declaringType.Element("declaringType");
+                //get namespace for the nested class host
+                string className = declaringType.Attribute("name").Value;
+                //the obtained result is the namespace
+                return getNestedClassNamespace(childNode) + className;
+            }
         }
 
         private string RandomString(int size)
