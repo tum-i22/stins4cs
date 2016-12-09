@@ -171,12 +171,8 @@ namespace SimpleRoslynAnalysis
                         {
                             methodsList.Add(methodObject);
                         }
-
                         //Console.WriteLine("the number of if " + ifStatements.Count() + " the number of overall statemenets " + statements.Count());
-
                     }
-
-
                 }// end of class if
 
 
@@ -373,7 +369,10 @@ namespace SimpleRoslynAnalysis
                         {
                             Method checkedMethod = checkingNetwork[id];
                             // this dic will be used later to update all methods in the class
-                            dict.Add(method, InsertCheck(method, checkedMethod));
+                            if (method.Body != null)
+                            {
+                                dict.Add(method, InsertCheck(method, checkedMethod));
+                            }
 
                             usingsToAdd.Add(checkedMethod.getNameSpace());
                         }
@@ -658,6 +657,7 @@ namespace SimpleRoslynAnalysis
                 return currMethod;
                 //checkedMethod.ChallangeCode = "// testing empty";
             }
+
             var checkText = checkedMethod.ChallangeCode;
             string aLine = null;
             // create and fill statement list 
