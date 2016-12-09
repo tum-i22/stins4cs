@@ -328,7 +328,8 @@ namespace SimpleRoslynAnalysis
                         if (match.Count == 0)
                         {
                             string line = String.Format("\nvar {0} = new {1}();\n", randVar, explorationObject.FullClassName);
-                            transformedCode.Insert(1, line);
+                            
+                            transformedCode.Insert(transformedCode.ToString().IndexOf("{") + 1, line);
                         }
                         else //change existing declaration to use full class name Namespace.Class
                         {
