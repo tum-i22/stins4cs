@@ -49,8 +49,10 @@ namespace SimpleRoslynAnalysis
                     explorationObject.NameSpace = declaringType.Attribute("namespace").Value;
                 }
                 
+                //get class name
                 explorationObject.ClassName = declaringType.Attribute("name").Value;
 
+                //check if the class is static -> used in parsing the check
                 if (declaringType.Parent.Attribute("static") != null)
                 {
                     explorationObject.IsStaticClass = Convert.ToBoolean(declaringType.Parent.Attribute("static").Value);
@@ -114,23 +116,61 @@ namespace SimpleRoslynAnalysis
                      this.tryVoid(s0, 0, (string)null);
                      Assert.IsNotNull((object)s0);
                 or this 
-                [using (PexChooseBehavedBehavior.Setup())
-                 {
-              SInterface1 sInterface1;
-              Program program;  ---> targetClassDeclarationIndex
-              bool b;
-              sInterface1 = new SInterface1();
-              program = new Program((Interface1)sInterface1); --> targetClassAssignmentIndex
-              b = this.isGood(program);
-              Assert.AreEqual<bool>(false, b);
-              Assert.IsNotNull((object)program);
-            }
-                                
+                    [using (PexChooseBehavedBehavior.Setup())
+                     {
+                      SInterface1 sInterface1;
+                      Program program;  ---> targetClassDeclarationIndex
+                      bool b;
+                      sInterface1 = new SInterface1();
+                      program = new Program((Interface1)sInterface1); --> targetClassAssignmentIndex
+                      b = this.isGood(program);
+                      Assert.AreEqual<bool>(false, b);
+                      Assert.IsNotNull((object)program);
+                    }     
                 **/
                 Console.WriteLine("one passing exploration in report for " + explorationObject.getFullName());
-                string variableName = "s0"; // normally its s0 unless we are in the special case of using
                 List<string> codeStatements = codeStr.Split(new string[] { "\n" }, StringSplitOptions.RemoveEmptyEntries).ToList();
+
+                string variableName = "s0"; // normally its s0 unless we are in the special case of using
+
+                //variable under test is not always called s0.
+                //find the varibale and change the name of the variable to search for
+                //otherwise leave as is
+                var varDeclarator = SyntaxFactory.ParseStatement(codeStatements[0]).DescendantNodes().OfType<VariableDeclaratorSyntax>().FirstOrDefault();
+                if(varDeclarator != null)
+                {
+                    variableName = varDeclarator.ToFullString();
+                }
+
                 bool variableNameSet = false;
+
+                /*
+                    case: code starts "using (PexDisposableContext disposables = PexDisposableContext.Create())"
+                    solution: if first line has using + PexDisposableContext
+                                remove first and last lines
+                */
+
+                if(codeStatements[0].Contains("using") && codeStatements[0].Contains("PexDisposableContext"))
+                {
+                    //muust get PexDisposableContext var and delete any mention of it in the method
+                    var usingVarDeclSyntx = SyntaxFactory.ParseStatement(codeStatements[0]).DescendantNodes().OfType<VariableDeclarationSyntax>().FirstOrDefault();
+
+                    //assume we have only 1 delcaration in the using statement
+                    var varNameIdentifiers = usingVarDeclSyntx.Variables[0].Identifier.Value.ToString();// usingVarDeclSyntx.Variables;
+
+                    //remove "using (PexDisposableContext <varName> = PexDisposableContext.Create())"
+                    codeStatements.RemoveAt(0);
+                    //remove {
+                    codeStatements.RemoveAt(0);
+                    //remove }
+                    codeStatements.RemoveAt(codeStatements.Count-1);
+
+                    var codeLinesToDelete = codeStatements.Where(codeline => codeline.Contains(varNameIdentifiers)).ToList();
+                    foreach(var line in codeLinesToDelete)
+                    {
+                        codeStatements.Remove(line);
+                    }
+                }
 
                 if (codeStr.Contains(pex_creation_tag))
                 {// the cases where pex cannot create the instances
@@ -231,32 +271,52 @@ namespace SimpleRoslynAnalysis
 
                         }
 
+                        //handling of THIS statement
                         if (codeLine.Contains(explorationObject.FunctionName))// this is the call statement
                         {
+                            var codeLineStatementCompontnets = SyntaxFactory.ParseStatement(codeLine).DescendantNodes();
+                            var thisStatement = codeLineStatementCompontnets.OfType<ThisExpressionSyntax>();
 
-                            if (codeLine.Contains(variableName + ","))
+                            if(thisStatement.Count() > 0)
                             {
-                                codeLine = codeLine.Replace(variableName + ",", "");
+                                var argumentLists = codeLineStatementCompontnets.OfType<ArgumentListSyntax>();
+                                if(argumentLists.Count() > 0)
+                                {
+                                    foreach(var argumentList in argumentLists)
+                                    {
+                                        if (argumentList.Arguments.Count > 0)
+                                        {
+                                            var firstVariable = argumentList.Arguments.FirstOrDefault().ToFullString();
+                                            if (firstVariable == variableName)
+                                            {
+                                                string funcArgs = argumentList.Arguments.ToString().Replace(firstVariable+",","");
+                                                string funcName;
+                                                //case when it is a function
+                                                try
+                                                {
+                                                    funcName = SyntaxFactory.ParseStatement(codeLine).DescendantNodes().OfType<GenericNameSyntax>().FirstOrDefault().ToFullString();
+                                                }
+                                                //case when it is a get method
+                                                catch
+                                                {
+                                                    var temp1 = SyntaxFactory.ParseStatement(codeLine).DescendantNodes().OfType<MemberAccessExpressionSyntax>().FirstOrDefault();
+                                                    funcName = temp1.DescendantNodes().OfType<IdentifierNameSyntax>().FirstOrDefault().ToString();
+                                                }
+                                                codeLine = String.Format("{0}.{1}({2});", firstVariable,funcName,funcArgs);
+                                            }
+                                        }
+                                    }
+                                }
                             }
-                            else if (codeLine.Contains(variableName) && !codeLine.Trim().StartsWith(variableName)) // there are cases when they call the function directly
-                            {
-                                codeLine = codeLine.Replace(variableName, "");
-                            }
-
                             //if static class this.m() ->className.m() 
-                            if(explorationObject.IsStaticClass)
+                            if (explorationObject.IsStaticClass)
                             {
                                 codeLine = codeLine.Replace("this", explorationObject.FullClassName);
                             }
-                            else
-                            {
-                                codeLine = codeLine.Replace("this", variableName);
-                            }
-
                         }
 
 
-                        if (codeLine.StartsWith("Assert."))// this is the check statement
+                        if (codeLine.Contains("Assert."))// this is the check statement
                         {
                             //if method call is several lines long, get it all together.
                             while (!codeLine.EndsWith(";"))
@@ -266,6 +326,22 @@ namespace SimpleRoslynAnalysis
                             }
                             codeStatements[j] = codeLine;
 
+
+                            /*{
+                                 var assertStatement = SyntaxFactory.ParseStatement(codeLine);
+                                 var arguments = assertStatement.DescendantNodes().OfType<ArgumentSyntax>().ToArray();
+
+                                 codeLine = String.Format("\nif ({0} == null)", arguments[0].ToFullString());
+                                 codeLine = codeLine + " { RESPONSE } ";
+                             }
+                             else if (codeLine.Contains("IsNull"))
+                             {
+                                 var assertStatement = SyntaxFactory.ParseStatement(codeLine);
+                                 var arguments = assertStatement.DescendantNodes().OfType<ArgumentSyntax>().ToArray();
+
+                                 codeLine = String.Format("\nif ({0} != null)", arguments[0].ToFullString());
+                                 codeLine = codeLine + " { RESPONSE } ";
+                             }*/
                             if (codeLine.Contains("AreEqual"))// this is a comparison for the type functions; 
                                                               //Assert.AreEqual<string>("01-Jan-01 12:00:00 AM", s);
 
@@ -282,6 +358,23 @@ namespace SimpleRoslynAnalysis
                                 codeLine = "";
                             }
 
+                            /*
+                                if(!System.Environment.StackTrace.Contains("Sharpen.AList`1.EnsureCapacity"))
+                                {
+                                    AList<int> aList;
+                                    int[] ints = new int[1];
+                                    aList = new AList<int>((IEnumerable<int>)ints);
+                                    s0.EnsureCapacity<int>(aList, 5); <- this case
+
+                                    if (5 != ((List<int>)aList).Capacity) 
+                                    { RESPONSE } 
+
+                                    if (1 != ((List<int>)aList).Count) 
+                                    { RESPONSE } 
+                                    }
+                                }
+                            */
+                            
                         }
 
 
@@ -312,11 +405,11 @@ namespace SimpleRoslynAnalysis
                 }
 
                 //if contains s0 - definition of variable used to test (?!)
+
+                //case: s0 - not a valid variable
+                //comment: if used - most likely the value needed is used as an argument in the method
                 if (transformedCode.ToString().Contains("s0"))
                 {
-                    //this fixes the "undeclared variable" exception
-                    //caused by change of this.method -> varName.method without varName declaration
-                    //this is the actual declaration
                     if (!explorationObject.IsStaticClass)
                     {
                         string randVar = RandomString(random.Next(2, 7));
@@ -326,12 +419,7 @@ namespace SimpleRoslynAnalysis
                         var match = reg.Matches(transformedCode.ToString());
                         //if declaration does not exist -> declare
                         if (match.Count == 0)
-                        {
-                            string line = String.Format("\nvar {0} = new {1}();\n", randVar, explorationObject.FullClassName);
-                            
-                            transformedCode.Insert(transformedCode.ToString().IndexOf("{") + 1, line);
-                        }
-                        else //change existing declaration to use full class name Namespace.Class
+                         //change existing declaration to use full class name Namespace.Class
                         {
                             transformedCode.Replace(explorationObject.ClassName, explorationObject.FullClassName);
                         }
