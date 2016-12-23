@@ -42,7 +42,7 @@ namespace SimpleRoslynAnalysis
                 //case of nested classes in the cs file if does not have namespace
                 if (declaringType.Attribute("namespace") == null)
                 {
-                    explorationObject.NameSpace = getNestedClassNamespace(declaringType);
+                    explorationObject.NameSpace = GetNestedClassNamespace(declaringType);
                 }
                 else
                 {
@@ -172,12 +172,23 @@ namespace SimpleRoslynAnalysis
                     }
                 }
 
+                //if method call is several lines long, get it all together.
+                for (int i = 0; i < codeStatements.Count; i++)
+                {
+                    while (!codeStatements[i].EndsWith(";"))
+                    {
+                        codeStatements[i] += codeStatements[i + 1];
+                        codeStatements.RemoveAt(i + 1);
+                    }
+                }
+
                 if (codeStr.Contains(pex_creation_tag))
                 {// the cases where pex cannot create the instances
                     int targetClassDeclarationIndex = -1;
                     for (int i = 0; i < codeStatements.Count(); i++)
                     {
                         String codeLine = codeStatements[i];
+
                         // detect where we declare the target class( before we have declaration of the used params
                         if (codeLine.Trim().StartsWith(explorationObject.ClassName) && targetClassDeclarationIndex == -1)
                         {
@@ -274,107 +285,27 @@ namespace SimpleRoslynAnalysis
                         //handling of THIS statement
                         if (codeLine.Contains(explorationObject.FunctionName))// this is the call statement
                         {
-                            var codeLineStatementCompontnets = SyntaxFactory.ParseStatement(codeLine).DescendantNodes();
-                            var thisStatement = codeLineStatementCompontnets.OfType<ThisExpressionSyntax>();
+                            codeLine = HandleThisStatement(codeLine, variableName, explorationObject);
+                        }
 
-                            if(thisStatement.Count() > 0)
-                            {
-                                var argumentLists = codeLineStatementCompontnets.OfType<ArgumentListSyntax>();
-                                if(argumentLists.Count() > 0)
-                                {
-                                    foreach(var argumentList in argumentLists)
-                                    {
-                                        if (argumentList.Arguments.Count > 0)
-                                        {
-                                            var firstVariable = argumentList.Arguments.FirstOrDefault().ToFullString();
-                                            if (firstVariable == variableName)
-                                            {
-                                                string funcArgs = argumentList.Arguments.ToString().Replace(firstVariable+",","");
-                                                string funcName;
-                                                //case when it is a function
-                                                try
-                                                {
-                                                    funcName = SyntaxFactory.ParseStatement(codeLine).DescendantNodes().OfType<GenericNameSyntax>().FirstOrDefault().ToFullString();
-                                                }
-                                                //case when it is a get method
-                                                catch
-                                                {
-                                                    var temp1 = SyntaxFactory.ParseStatement(codeLine).DescendantNodes().OfType<MemberAccessExpressionSyntax>().FirstOrDefault();
-                                                    funcName = temp1.DescendantNodes().OfType<IdentifierNameSyntax>().FirstOrDefault().ToString();
-                                                }
-                                                codeLine = String.Format("{0}.{1}({2});", firstVariable,funcName,funcArgs);
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            //if static class this.m() ->className.m() 
-                            if (explorationObject.IsStaticClass)
-                            {
-                                codeLine = codeLine.Replace("this", explorationObject.FullClassName);
-                            }
+                        if(codeLine.Contains("PexSafeHelpers"))
+                        {
+                            codeLine = HandlePexSafeHelpers(codeLine);
                         }
 
 
                         if (codeLine.Contains("Assert."))// this is the check statement
                         {
-                            //if method call is several lines long, get it all together.
-                            while (!codeLine.EndsWith(";"))
-                            {
-                                codeLine += codeStatements[j + 1];
-                                codeStatements.RemoveAt(j + 1);
-                            }
-                            codeStatements[j] = codeLine;
+                            codeLine = HandleAsserStatement(codeLine,codeStatements);   
+                        }
 
-
-                            /*{
-                                 var assertStatement = SyntaxFactory.ParseStatement(codeLine);
-                                 var arguments = assertStatement.DescendantNodes().OfType<ArgumentSyntax>().ToArray();
-
-                                 codeLine = String.Format("\nif ({0} == null)", arguments[0].ToFullString());
-                                 codeLine = codeLine + " { RESPONSE } ";
-                             }
-                             else if (codeLine.Contains("IsNull"))
-                             {
-                                 var assertStatement = SyntaxFactory.ParseStatement(codeLine);
-                                 var arguments = assertStatement.DescendantNodes().OfType<ArgumentSyntax>().ToArray();
-
-                                 codeLine = String.Format("\nif ({0} != null)", arguments[0].ToFullString());
-                                 codeLine = codeLine + " { RESPONSE } ";
-                             }*/
-                            if (codeLine.Contains("AreEqual"))// this is a comparison for the type functions; 
-                                                              //Assert.AreEqual<string>("01-Jan-01 12:00:00 AM", s);
-
-                            {
-                                var assertStatement = SyntaxFactory.ParseStatement(codeLine);
-                                var arguments = assertStatement.DescendantNodes().OfType<ArgumentSyntax>().ToArray();
-
-                                codeLine = String.Format("\nif ({0} != {1})",arguments[0].ToFullString(),arguments[1].ToFullString());
-                                codeLine = codeLine + " { RESPONSE } ";
-                            }
-                            else if (codeLine.Contains("IsNotNull") || codeLine.Contains("IsNull"))// TODO for void functions ; Assert.IsNotNull((object)s0);
-                            {
-
-                                codeLine = "";
-                            }
-
-                            /*
-                                if(!System.Environment.StackTrace.Contains("Sharpen.AList`1.EnsureCapacity"))
-                                {
-                                    AList<int> aList;
-                                    int[] ints = new int[1];
-                                    aList = new AList<int>((IEnumerable<int>)ints);
-                                    s0.EnsureCapacity<int>(aList, 5); <- this case
-
-                                    if (5 != ((List<int>)aList).Capacity) 
-                                    { RESPONSE } 
-
-                                    if (1 != ((List<int>)aList).Count) 
-                                    { RESPONSE } 
-                                    }
-                                }
-                            */
-                            
+                        
+                        //case: byteBuffer.Get02((byte[])null, 0, 0); -> Function has numeric characters
+                        Regex regex = new Regex("[a-zA-Z]+[0-9]+");
+                        Match match = regex.Match(codeLine);
+                        if (match.Success)
+                        {
+                            codeLine = HandlePexFunctionNumericName(codeLine);
                         }
 
 
@@ -447,7 +378,169 @@ namespace SimpleRoslynAnalysis
 
         }
 
-        private string getNestedClassNamespace(XElement declaringType)
+        private string HandleAsserStatement(string codeLine, List<string> codeStatements)
+        {
+            if (codeLine.Contains("AreEqual"))// this is a comparison for the type functions; 
+                                              //Assert.AreEqual<string>("01-Jan-01 12:00:00 AM", s);
+
+            {
+                var assertStatement = SyntaxFactory.ParseStatement(codeLine);
+                var arguments = assertStatement.DescendantNodes().OfType<ArgumentSyntax>().ToArray();
+
+                codeLine = String.Format("\nif ({0} != {1})", arguments[0].ToFullString(), arguments[1].ToFullString());
+                codeLine = codeLine + " { RESPONSE } ";
+            }
+            else if (codeLine.Contains("IsNotNull") || codeLine.Contains("IsNull"))// TODO for void functions ; Assert.IsNotNull((object)s0);
+            {
+                 var assertStatement = SyntaxFactory.ParseStatement(codeLine);
+                 var arguments = assertStatement.DescendantNodes().OfType<ArgumentSyntax>().ToArray();
+
+                 codeLine = String.Format("\nif ({0} == null)", arguments[0].ToFullString());
+                 codeLine = codeLine + " { RESPONSE } ";
+             }
+             else if (codeLine.Contains("IsNull"))
+             {
+                 var assertStatement = SyntaxFactory.ParseStatement(codeLine);
+                 var arguments = assertStatement.DescendantNodes().OfType<ArgumentSyntax>().ToArray();
+
+                 codeLine = String.Format("\nif ({0} != null)", arguments[0].ToFullString());
+                 codeLine = codeLine + " { RESPONSE } ";
+             }
+            else
+            {
+                codeLine = "";
+            }
+
+            return codeLine;
+        }
+
+        private string HandlePexFunctionNumericName(string codeLine)
+        {
+            var statement = SyntaxFactory.ParseStatement(codeLine);
+            var temp = statement.DescendantNodesAndSelf();
+            var invocationExpression = statement.DescendantNodesAndSelf().OfType<InvocationExpressionSyntax>().LastOrDefault();
+            var hasInvocationExpression = invocationExpression != null ? true : false;
+            if (hasInvocationExpression)
+            {
+                //has to be first because in the cases of "Namespace.Class.Function" the Last = Namespace.Class. First = Namespace.Class.Function. We need first
+                var memberAccessExpression = statement.DescendantNodes().OfType<MemberAccessExpressionSyntax>().FirstOrDefault();
+                //take the last item = function name
+                ExpressionSyntax functionName = memberAccessExpression.DescendantNodes().OfType<GenericNameSyntax>().LastOrDefault();
+
+                var isGenericName = functionName != null ? true : false;
+                //if no name found -> take last identifyer Get/Set case
+                if(!isGenericName)
+                {
+                    functionName = memberAccessExpression.DescendantNodes().OfType<IdentifierNameSyntax>().LastOrDefault();
+                }
+
+                if (functionName != null)
+                {
+                    Regex regex = new Regex("[0-9]+");
+                    Match match = regex.Match(functionName.ToFullString());
+                    if (match.Value != "")
+                    {
+                        var newFuncName = functionName.ToFullString().Replace(match.Value, "");
+                        codeLine = codeLine.Replace(functionName.ToFullString(), newFuncName);
+                    }
+                }
+            }
+            return codeLine;
+        }
+
+        private string HandlePexSafeHelpers(string codeLine)
+        {
+            var statement = SyntaxFactory.ParseStatement(codeLine);
+            var memberAccessExpression = statement.DescendantNodes().OfType<MemberAccessExpressionSyntax>().LastOrDefault().ToFullString();
+
+            if (memberAccessExpression.Contains("ToBoolean"))
+            {
+                codeLine = codeLine.Replace(memberAccessExpression, "Convert.ToBoolean");
+            }
+
+            return codeLine;
+        }
+
+        private string HandleThisStatement(string codeLine, string variableName, Exploration explorationObject)
+        {
+            var codeLineStatementCompontnets = SyntaxFactory.ParseStatement(codeLine).DescendantNodes();
+            var isThisStatement = codeLineStatementCompontnets.OfType<ThisExpressionSyntax>().Count() > 0 ? true : false;
+
+            var isAssignment = codeLineStatementCompontnets.OfType<AssignmentExpressionSyntax>().Count() > 0 ? true : false;
+
+            if (isThisStatement)
+            {
+                var argumentLists = codeLineStatementCompontnets.OfType<ArgumentListSyntax>();
+                if (argumentLists.Count() > 0)
+                {
+                    foreach (var argumentList in argumentLists)
+                    {
+                        if (argumentList.Arguments.Count > 0)
+                        {
+                            //check if the first var is a cast
+                            var cast = argumentList.Arguments.FirstOrDefault().DescendantNodes().OfType<CastExpressionSyntax>();
+                            var hasCast = cast.Count() > 0 ? true : false;
+                            bool castIsFirstVar = false;
+                            //if yes and it is a cast of the variable under test -> use the sat to substitute THIS
+                            if (hasCast && cast.ToList()[0].ToFullString().Contains(variableName))
+                            {
+                                castIsFirstVar = true;
+                            }
+
+                            var firstVariable = argumentList.Arguments.FirstOrDefault().ToFullString();
+
+                            if (firstVariable == variableName || castIsFirstVar )
+                            {
+                                //remove the first argument. leave the rest
+                                string funcArgs;
+                                if (argumentList.Arguments.Count > 1)
+                                {
+                                    funcArgs = argumentList.Arguments.ToString().Replace(firstVariable + ",", "");
+                                }
+                                else
+                                //empty funcArgs if the argument is only 1 arg
+                                {
+                                    funcArgs = "";
+                                }
+
+                                string funcName;
+
+                                try
+                                {
+                                    funcName = SyntaxFactory.ParseStatement(codeLine).DescendantNodes().OfType<GenericNameSyntax>().FirstOrDefault().ToFullString();
+                                }
+                                //case when it is a get/set method
+                                catch
+                                {
+                                    var temp1 = SyntaxFactory.ParseStatement(codeLine).DescendantNodes().OfType<MemberAccessExpressionSyntax>().FirstOrDefault();
+                                    funcName = temp1.DescendantNodes().OfType<IdentifierNameSyntax>().FirstOrDefault().ToString();
+                                }
+
+                                codeLine = String.Format("{0}.{1}({2});", variableName, funcName, funcArgs);
+
+                                if (isAssignment)
+                                {
+                                    var assignmentExpression = codeLineStatementCompontnets.OfType<AssignmentExpressionSyntax>();
+                                    var assignmentVar = assignmentExpression.ToList()[0].DescendantNodes().OfType<IdentifierNameSyntax>()
+                                        .ToList()[0].ToFullString();
+                                    codeLine = String.Format("{0} = {1}", assignmentVar, codeLine);
+
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            //if static class this.m() ->className.m() 
+            if (explorationObject.IsStaticClass)
+            {
+                codeLine = codeLine.Replace("this", explorationObject.FullClassName);
+            }
+
+            return codeLine;
+        }
+
+        private string GetNestedClassNamespace(XElement declaringType)
         {
             //if the object does has a namespace -> return fullNameSpace = namespace + class
             if (declaringType.Attributes().Where(atr => atr.Name == "namespace").Count() > 0)
@@ -463,7 +556,7 @@ namespace SimpleRoslynAnalysis
                 //get namespace for the nested class host
                 string className = declaringType.Attribute("name").Value;
                 //the obtained result is the namespace
-                return getNestedClassNamespace(childNode) + className;
+                return GetNestedClassNamespace(childNode) + className;
             }
         }
 
