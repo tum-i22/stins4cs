@@ -337,32 +337,6 @@ namespace SimpleRoslynAnalysis
 
                 //if contains s0 - definition of variable used to test (?!)
 
-                //case: s0 - not a valid variable
-                //comment: if used - most likely the value needed is used as an argument in the method
-                if (transformedCode.ToString().Contains("s0"))
-                {
-                    if (!explorationObject.IsStaticClass)
-                    {
-                        string randVar = RandomString(random.Next(2, 7));
-
-                        //check if the s0 has a declaration already to avoid duplicated declaration
-                        Regex reg = new Regex(@"(.)+ s0 = new (.)+\(\)\;");
-                        var match = reg.Matches(transformedCode.ToString());
-                        //if declaration does not exist -> declare
-                        if (match.Count == 0)
-                         //change existing declaration to use full class name Namespace.Class
-                        {
-                            transformedCode.Replace(explorationObject.ClassName, explorationObject.FullClassName);
-                        }
-                        //else -> just rename s0
-                        transformedCode = transformedCode.Replace("s0", randVar);
-                    }
-                    //if class is static -> this.TestMethodCall
-                    else
-                    {
-                        transformedCode = transformedCode.Replace("s0", explorationObject.ClassName);
-                    }
-                }
                 explorationObject.ChallangeCode = transformedCode.ToString();
 
                 //Console.WriteLine("trans" + transformedCode.ToString());
