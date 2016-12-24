@@ -400,11 +400,6 @@ namespace SimpleRoslynAnalysis
                         root = root.ReplaceNodes(dict.Keys, (n1, n2) => dict[n1]).NormalizeWhitespace();
                         var compilationUnitSyntax = (CompilationUnitSyntax)root;
                         var newCompilationUnitSyntax = compilationUnitSyntax.AddUsings(items);
-                        //case: new usings do not have all usings needed
-                        //problem: missing reference error in files
-                        //solution: merge old an new usings, delete duplicates
-
-
 
                         root = root.ReplaceNode(compilationUnitSyntax, newCompilationUnitSyntax).NormalizeWhitespace();
 
@@ -418,7 +413,7 @@ namespace SimpleRoslynAnalysis
                 //Formatter.
                 // Format the document.
                 root = Formatter.Format(root, workspace, options);
-                string fileContent = checkAndInsertUsings(disablePragmaWarningCS0618(root.ToFullString()));
+                string fileContent = UsingList.AddUsingListToOfFile(disablePragmaWarningCS0618(root.ToFullString()));
                 // sampleProjectToAnalyze.Documents.Where( doc => doc.)
                 string augmentedDocSaveDir = String.Format("{0}{1}", (string)Properties.Settings.Default["Output_Dir"], GenerateDocumentFolderPath(document.Folders));
                 string augmentedDocSavePath = String.Format("{0}{1}", augmentedDocSaveDir, document.Name);
@@ -787,28 +782,49 @@ namespace SimpleRoslynAnalysis
 
         }
 
-        private static string checkAndInsertUsings(string fileContent)
+        private static string disablePragmaWarningCS0618(string fileContent)
+        {
+            string warningDisabler = "\n#pragma warning disable CS0618 // Type or member is obsolete";
+            return warningDisabler + "\n" + fileContent;
+        }
+    }
+
+    public static class UsingList
+    {
+        private static List<string> _usingList = new List<string>();
+
+        public static void Add(UsingStatementSyntax uss)
+        {
+            _usingList.Add(uss.ToFullString());
+        }
+
+        public static string GetUsings()
+        {
+            string result = "";
+            foreach(var use in _usingList)
+            {
+                result += use + "\n";
+            }
+
+            return result;
+        }
+
+        public static string AddUsingListToOfFile(string fileContent)
         {
             string[] additionalUsings = { "using System.Collections;",
                 "using System.Text;",
                 "using System.Globalization;",
                 "using System.Collections.Generic;" };
 
-            foreach(var _using in additionalUsings)
+            foreach (var _using in additionalUsings)
             {
-                if(!fileContent.Contains(_using))
+                if (!fileContent.Contains(_using))
                 {
                     fileContent = _using + "\n" + fileContent;
                 }
             }
 
             return fileContent;
-        }
-
-        private static string disablePragmaWarningCS0618(string fileContent)
-        {
-            string warningDisabler = "\n#pragma warning disable CS0618 // Type or member is obsolete";
-            return warningDisabler + "\n" + fileContent;
         }
     }
 }
