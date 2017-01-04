@@ -27,7 +27,6 @@ namespace SimpleRoslynAnalysis
         //, DELAYED_CRASH 0,REMOTE_LOG 0";
         public static int NODES_NETWORK = (int)Properties.Settings.Default["NodeS_Network"];
         public static int boolCastMode = (int)Properties.Settings.Default["BoolCastMode"];
-        public static string log_message = "\"" + (string)Properties.Settings.Default["Log_Message"] + "\"";
         public static string ignore_transform = (string)Properties.Settings.Default["Ignore_Annotation"];
 
         // this will be the index of where not to continue using the first option

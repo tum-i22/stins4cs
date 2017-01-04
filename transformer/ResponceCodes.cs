@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace SimpleRoslynAnalysis
 {
-    class ResponceCodes
+    static class ResponceCodes
     {
         public const string RESPONSE_CODE_1 = "DO_NOTHONG";
         public const string RESPONSE_CODE_2 = "CRASH";
@@ -14,6 +14,7 @@ namespace SimpleRoslynAnalysis
         public const string RESPONSE_CODE_4 = "REMOTE_LOG";
 
         private static int delayed_crash_upper_bound = (int)Properties.Settings.Default["Delayed_Crash_Upper_Bound_Sec"];
+        private static string log_message = "\"" + (string)Properties.Settings.Default["Log_Message"] + "\"";
 
         // we may have up to two response optins
         public static string ResponseFirstOption { get; set; }
@@ -78,7 +79,7 @@ namespace SimpleRoslynAnalysis
                 {
                     ResponceCodes.ResponseFirstOption = optionSettings[0];
                     double weight = double.Parse(optionSettings[1]);
-                    responseSwitchIndex = (int)((weight / 100) * methodsCount);
+                    ResponseSwitchIndex = (int)((weight / 100) * methodsCount);
                 }
                 else
                 {
