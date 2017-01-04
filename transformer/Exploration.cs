@@ -25,9 +25,9 @@ namespace SimpleRoslynAnalysis
         {
             //this.ChallangeCodeList = new List<string>();
         }
-        public String getFullName()
+        public string FullFunctionName
         {
-            return this.NameSpace + "." + this.ClassName + "." + this.FunctionName;
+            get { return this.NameSpace + "." + this.ClassName + "." + this.FunctionName; }            
         }
 
         public string FullClassName { get { return NameSpace + "." + ClassName; } }
