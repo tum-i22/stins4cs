@@ -82,7 +82,7 @@ namespace SimpleRoslynAnalysis
 
                 if (code == null)
                 {
-                    Console.WriteLine("No passing test for function " + explorationObject.getFullName());
+                    Console.WriteLine("No passing test for function " + explorationObject.FullFunctionName);
                     continue;
 
                 }
@@ -128,7 +128,7 @@ namespace SimpleRoslynAnalysis
                       Assert.IsNotNull((object)program);
                     }     
                 **/
-                Console.WriteLine("one passing exploration in report for " + explorationObject.getFullName());
+                Console.WriteLine("one passing exploration in report for " + explorationObject.FullFunctionName);
                 List<string> codeStatements = codeStr.Split(new string[] { "\n" }, StringSplitOptions.RemoveEmptyEntries).ToList();
 
                 string variableName = "s0"; // normally its s0 unless we are in the special case of using
@@ -261,7 +261,7 @@ namespace SimpleRoslynAnalysis
 
                         if (Transformer.primitveTypes.Any(str => codeLine.Trim().StartsWith(str)))// this is a primitive declaration
                         {
-                            if ((Transformer.responseScndOption == Transformer.RESPONSE_CODE_2 || Transformer.responseFirstOption == Transformer.RESPONSE_CODE_2) && Transformer.UsePrimitiveCombination)
+                            if ((ResponceCodes.ResponseSecondOption == ResponceCodes.RESPONSE_CODE_2 || ResponceCodes.ResponseFirstOption == ResponceCodes.RESPONSE_CODE_2) && Transformer.UsePrimitiveCombination)
                             { // we have primitive declration, we have the one of the options to crash and the option is enabled
                               // then we will be moving this declration even if it was not used in the primitive combination
 
@@ -320,7 +320,7 @@ namespace SimpleRoslynAnalysis
 
                 if (useStackInspection)// added this setting to test the code without the if statement against pattern matching
                 {
-                    transformedCode.Insert(0, "if(!System.Environment.StackTrace.Contains(\"" + explorationObject.getFullName() + "\"))\n{\n");
+                    transformedCode.Insert(0, "if(!System.Environment.StackTrace.Contains(\"" + explorationObject.FullFunctionName + "\"))\n{\n");
                 }
                 //else {
                 //    transformedCode.Insert(0, "if(!Environment.StackTrace.Contains(\"" + explorationObject.getFullName() + "\"))\n{\n");

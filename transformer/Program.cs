@@ -26,35 +26,11 @@ namespace SimpleRoslynAnalysis
         //"CRASH 100,DO_NOTHONG 40";
         //, DELAYED_CRASH 0,REMOTE_LOG 0";
         public static int NODES_NETWORK = (int)Properties.Settings.Default["NodeS_Network"];
-        public static int delayed_crash_upper_bound = (int)Properties.Settings.Default["Delayed_Crash_Upper_Bound_Sec"];
         public static int boolCastMode = (int)Properties.Settings.Default["BoolCastMode"];
         public static string log_message = "\"" + (string)Properties.Settings.Default["Log_Message"] + "\"";
         public static string ignore_transform = (string)Properties.Settings.Default["Ignore_Annotation"];
 
-        public const string RESPONSE_CODE_1 = "DO_NOTHONG";
-        public const string RESPONSE_CODE_2 = "CRASH";
-        public const string RESPONSE_CODE_3 = "DELAYED_CRASH";
-        public const string RESPONSE_CODE_4 = "REMOTE_LOG";
-
-
-
-        private static string RESPONSE_CODE_1_SOURCE = " ";
-        private static string RESPONSE_CODE_2_SOURCE = " System.Environment.Exit(0); ";
-        private static string RESPONSE_CODE_3_SOURCE = @" Random r = new Random();
-            System.Timers.Timer aTimer = new System.Timers.Timer(r.Next(1," + delayed_crash_upper_bound + @")*1000);
-            aTimer.Elapsed += (sender, e) => {
-                System.Environment.Exit(0);
-            }; 
-            aTimer.Enabled = true;";
-
-        private static string RESPONSE_CODE_4_SOURCE = @"log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType).Fatal(" + log_message + ");";
-
-
-        // we may have up to two response optins
-        public static string responseFirstOption = "";
-        public static string responseScndOption = "";
         // this will be the index of where not to continue using the first option
-        private static int responseSwitchIndex;
         public static List<string> primitveTypes = new List<string>()
         {"byte","sbyte","int","uint","short","ushort","long","ulong","float","double","char","bool","string","decimal"};
         public static List<string> numericPrimitveTypes = new List<string>()
@@ -178,7 +154,7 @@ namespace SimpleRoslynAnalysis
 
             }// done looping the documents
             Console.WriteLine("Number of methods in the first list " + methodsList.Count());
-            setResponseSettings(ResponseCode, methodsList.Count());
+            ResponceCodes.SetResponseSettings(ResponseCode, methodsList.Count());
             // start of phase two:
             // step 2 
             // parse the pex report 
@@ -188,25 +164,24 @@ namespace SimpleRoslynAnalysis
 
             // loop methods and add the challanges to it 
             // this maybe can be better optimized by doing this loop within other loops maybe the main loop of reading the code or the network generation loop
-            int passingTestsCount = 0;
             foreach (Exploration exp in explorations)
             {
                 //Console.WriteLine(exp.getFullName());
-                Method result = methodsList.FirstOrDefault(s => s.Id == exp.getFullName());
+                Method result = methodsList.FirstOrDefault(s => s.Id == exp.FullFunctionName);
                 // this can be null when the method is not in the list (ignored for instance)
                 if (result != null)
                 {
-                    passingTestsCount++;
                     result.ChallangeCode = exp.ChallangeCode;
                     result.ResultValue = exp.ResultValue;
                     result.variableName = exp.variableName;
-
                 }
-
-
             }
 
-            Console.WriteLine("total Number of methods with explorations found " + explorations.Count() + " merged with methods " + passingTestsCount);
+            var funtionsWithTests = methodsList.Where(s => explorations.Where(e => e.FullFunctionName == s.Id).FirstOrDefault() != null).ToList();
+
+            var explorationsWithTests = explorations.Where(e => methodsList.Where(s => s.Id == e.FullFunctionName).FirstOrDefault() != null).ToList();
+
+            Console.WriteLine("total Number of methods with explorations found " + explorations.Count() + " merged with methods " + funtionsWithTests.Count);
 
             // 2.1- shuffle the list of methods
             // can use shuffle or shuffle 2
@@ -256,9 +231,9 @@ namespace SimpleRoslynAnalysis
                     {
 
                         // put the second option if there
-                        if (i > responseSwitchIndex && responseScndOption != "")
+                        if (i > ResponceCodes.ResponseSwitchIndex && ResponceCodes.ResponseSecondOption != "")
                         {
-                            if (responseScndOption == RESPONSE_CODE_2 && UsePrimitiveCombination)
+                            if (ResponceCodes.ResponseSecondOption == ResponceCodes.RESPONSE_CODE_2 && UsePrimitiveCombination)
                             { // for crash we can use the primitive combination if parent and child are primitives
 
                                 //Console.WriteLine(checkedMethod.ReturnType + checkingMethod.ReturnType);
@@ -271,19 +246,19 @@ namespace SimpleRoslynAnalysis
                                 }
                                 else
                                 {
-                                    value = value.Replace("RESPONSE", getResponse(1, checkedMethod.Id));
+                                    value = value.Replace("RESPONSE", ResponceCodes.GetResponse(1, checkedMethod.Id));
                                 }
                             }
                             else// regular scnd option
                             {
-                                value = value.Replace("RESPONSE", getResponse(1, checkedMethod.Id));
+                                value = value.Replace("RESPONSE", ResponceCodes.GetResponse(1, checkedMethod.Id));
                             }
 
 
                         }
                         else // first option
                         {
-                            if (responseFirstOption == RESPONSE_CODE_2 && UsePrimitiveCombination)
+                            if (ResponceCodes.ResponseFirstOption == ResponceCodes.RESPONSE_CODE_2 && UsePrimitiveCombination)
                             { // for crash we can use the primitive combination
 
                                 if (isPrimitive(checkedMethod.ReturnType) && isPrimitive(checkingMethod.ReturnType))
@@ -295,12 +270,12 @@ namespace SimpleRoslynAnalysis
                                 }
                                 else
                                 {
-                                    value = value.Replace("RESPONSE", getResponse(0, checkedMethod.Id));
+                                    value = value.Replace("RESPONSE", ResponceCodes.GetResponse(0, checkedMethod.Id));
                                 }
                             }
                             else
                             {
-                                value = value.Replace("RESPONSE", getResponse(0, checkedMethod.Id));
+                                value = value.Replace("RESPONSE", ResponceCodes.GetResponse(0, checkedMethod.Id));
                             }
                         }
 
@@ -311,9 +286,6 @@ namespace SimpleRoslynAnalysis
                     //todo there are cases of same function id in overloading
                     checkingNetwork[checkingMethod.Id] = checkedMethod;
                 }
-
-
-
             }// end of for
 
 
@@ -582,65 +554,6 @@ namespace SimpleRoslynAnalysis
             return value;
         }
 
-        // returns the code statemenet of the response
-        private static string getResponse(int i, String methodName)
-        {
-            string responseType = (i == 0) ? responseFirstOption : responseScndOption;
-            string response;
-            switch (responseType)
-            {
-                case RESPONSE_CODE_1:
-                    response = RESPONSE_CODE_1_SOURCE;
-                    break;
-                case RESPONSE_CODE_2:
-                    response = RESPONSE_CODE_2_SOURCE;
-                    break;
-                case RESPONSE_CODE_3:
-                    response = RESPONSE_CODE_3_SOURCE;
-                    break;
-                case RESPONSE_CODE_4:
-                    response = RESPONSE_CODE_4_SOURCE.Replace("$", methodName);
-                    break;
-                default:
-                    response = RESPONSE_CODE_1_SOURCE;
-                    break;
-            }
-
-            return response;
-
-        }
-
-
-        // this method will read the response code by the user,
-        // and will set the needed data for that based on user selection
-        private static void setResponseSettings(string responseCode, int methodsCount)
-        {
-            // we have DO_NOTHING CRASH DELAYED_CRASH REMOTE_LOG
-            // we can combine  DO_NOTHONG 80,CRASH 20; 80,20 /100 comma seperated 
-            string[] options = responseCode.Split(',');
-            for (int i = 0; i < options.Count(); i++)
-            {
-                // now split the wieght from the action
-                // no cross validation of the weight will be done (no 20+80== 100) 
-                string[] optionSettings = options[i].Split(' '); // second is the weight
-                if (i == 0)
-                {
-                    responseFirstOption = optionSettings[0];
-                    double weight = double.Parse(optionSettings[1]);
-                    responseSwitchIndex = (int)((weight / 100) * methodsCount);
-                }
-                else
-                {
-                    responseScndOption = optionSettings[0];
-                }
-            }
-
-            //Console.WriteLine(responseFirstOption + "---" + responseScndOption + "---" + responseSwitchIndex);
-        }
-
-
-
-
 
         public static MethodDeclarationSyntax InsertCheck(MethodDeclarationSyntax currMethod, Method checkedMethod)
         {
@@ -712,7 +625,6 @@ namespace SimpleRoslynAnalysis
                             result += " " + parts[i];
                         }
                         newReturnStr = result;
-
                     }
 
                     newReturnStr += ";";
@@ -722,7 +634,6 @@ namespace SimpleRoslynAnalysis
                 }
                 if (dict.Any())
                 {
-
                     // replace the methods and write the checks
                     newMethod = newMethod.ReplaceNodes(dict.Keys, (n1, n2) => dict[n1]).NormalizeWhitespace();
                 }

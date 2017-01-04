@@ -109,6 +109,7 @@
     <Compile Include="Exploration.cs" />
     <Compile Include="ExtensionMethods.cs" />
     <Compile Include="Method.cs" />
+    <Compile Include="NetworkGenerator.cs" />
     <Compile Include="Parameter.cs" />
     <Compile Include="Parser.cs" />
     <Compile Include="Program.cs" />
@@ -119,6 +120,7 @@
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
       <DependentUpon>Settings.settings</DependentUpon>
     </Compile>
+    <Compile Include="ResponceCodes.cs" />
     <Compile Include="Settings.cs" />
   </ItemGroup>
   <ItemGroup>
