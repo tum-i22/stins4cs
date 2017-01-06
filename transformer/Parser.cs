@@ -1,6 +1,7 @@
 ﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using SimpleRoslynAnalysis.Properties;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -20,8 +21,8 @@ namespace SimpleRoslynAnalysis
         public List<Exploration> parseReport()
         {
 
-            XElement xelement = XElement.Load((string)Properties.Settings.Default["Pex_Report_Path"]);
-            bool useStackInspection = (bool)Properties.Settings.Default["UseStackInspection"];
+            XElement xelement = XElement.Load(GlobalVariables.PexReportPath);
+            bool useStackInspection = GlobalVariables.UseStackInspection;
     
             IEnumerable<XElement> explorations = from exploration in xelement.Descendants("exploration")
                                                  select exploration;
@@ -215,7 +216,7 @@ namespace SimpleRoslynAnalysis
                                 { // this target instance creation
                                     int eqIndex = codeLine.IndexOf("=");
 
-                                    codeLine = codeLine.Substring(0, eqIndex + 1) + " " + (string)Properties.Settings.Default["Factory_Class_Name"] + ".Create" + explorationObject.ClassName + "();";
+                                    codeLine = codeLine.Substring(0, eqIndex + 1) + " " + GlobalVariables.FactoryClassName + ".Create" + explorationObject.ClassName + "();";
                                     classesForFactory.Add(new Class(explorationObject.ClassName, explorationObject.NameSpace));
                                     codeStatements[i] = codeLine;
                                     break;
@@ -259,9 +260,9 @@ namespace SimpleRoslynAnalysis
                     if (!(codeLine.Trim().Count() == 0))
                     {
 
-                        if (Transformer.primitveTypes.Any(str => codeLine.Trim().StartsWith(str)))// this is a primitive declaration
+                        if (Types.primitiveTypes.Any(str => codeLine.Trim().StartsWith(str)))// this is a primitive declaration
                         {
-                            if ((ResponceCodes.ResponseSecondOption == ResponceCodes.RESPONSE_CODE_2 || ResponceCodes.ResponseFirstOption == ResponceCodes.RESPONSE_CODE_2) && Transformer.UsePrimitiveCombination)
+                            if ((Responces.ResponseSecondOption == Responces.RESPONSE_CODE_2 || Responces.ResponseFirstOption == Responces.RESPONSE_CODE_2) && GlobalVariables.UsePrimitiveCombination)
                             { // we have primitive declration, we have the one of the options to crash and the option is enabled
                               // then we will be moving this declration even if it was not used in the primitive combination
 
