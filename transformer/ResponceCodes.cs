@@ -6,15 +6,12 @@ using System.Threading.Tasks;
 
 namespace SimpleRoslynAnalysis
 {
-    static class ResponceCodes
+    static class Responces
     {
         public const string RESPONSE_CODE_1 = "DO_NOTHONG";
         public const string RESPONSE_CODE_2 = "CRASH";
         public const string RESPONSE_CODE_3 = "DELAYED_CRASH";
         public const string RESPONSE_CODE_4 = "REMOTE_LOG";
-
-        private static int delayed_crash_upper_bound = (int)Properties.Settings.Default["Delayed_Crash_Upper_Bound_Sec"];
-        private static string log_message = "\"" + (string)Properties.Settings.Default["Log_Message"] + "\"";
 
         // we may have up to two response optins
         public static string ResponseFirstOption { get; set; }
@@ -25,13 +22,13 @@ namespace SimpleRoslynAnalysis
         private static string RESPONSE_CODE_1_SOURCE = " ";
         private static string RESPONSE_CODE_2_SOURCE = " System.Environment.Exit(0); ";
         private static string RESPONSE_CODE_3_SOURCE = @" Random r = new Random();
-            System.Timers.Timer aTimer = new System.Timers.Timer(r.Next(1," + delayed_crash_upper_bound + @")*1000);
+            System.Timers.Timer aTimer = new System.Timers.Timer(r.Next(1," + GlobalVariables.DelayedCrashUpperBound + @")*1000);
             aTimer.Elapsed += (sender, e) => {
                 System.Environment.Exit(0);
             }; 
             aTimer.Enabled = true;";
 
-        private static string RESPONSE_CODE_4_SOURCE = @"log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType).Fatal(" + log_message + ");";
+        private static string RESPONSE_CODE_4_SOURCE = @"log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType).Fatal(" + GlobalVariables.LogMessage + ");";
 
 
 
@@ -77,18 +74,39 @@ namespace SimpleRoslynAnalysis
                 string[] optionSettings = options[i].Split(' '); // second is the weight
                 if (i == 0)
                 {
-                    ResponceCodes.ResponseFirstOption = optionSettings[0];
+                    Responces.ResponseFirstOption = optionSettings[0];
                     double weight = double.Parse(optionSettings[1]);
                     ResponseSwitchIndex = (int)((weight / 100) * methodsCount);
                 }
                 else
                 {
-                    ResponceCodes.ResponseSecondOption = optionSettings[0];
+                    Responces.ResponseSecondOption = optionSettings[0];
                 }
             }
 
             //Console.WriteLine(responseFirstOption + "---" + responseScndOption + "---" + responseSwitchIndex);
 
+        }
+
+        public static string RemoveResponsePart(string value)
+        {
+            // for primitive combination we need to remove the response part
+            //if (!Environment.StackTrace.Contains("ConsoleApplication1.Program.isGood"))
+            //{
+            //    Program program;
+            //    program = ClassFactory.CreateProgram();
+            //    b = program.isGood();
+
+            //   --> if (false != b) { RESPONSE }<--
+
+            //}
+
+            int lastSemiColonIndex = value.LastIndexOf(';');
+            value = value.Substring(0, lastSemiColonIndex + 1) + "\n}";
+
+
+
+            return value;
         }
     }
 }
