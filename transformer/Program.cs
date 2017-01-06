@@ -13,28 +13,10 @@ using System.IO;
 using Microsoft.CodeAnalysis.CSharp.Formatting;
 using Microsoft.CodeAnalysis.Formatting;
 
-
-
 namespace SimpleRoslynAnalysis
 {
     class Transformer
     {
-        private static string ResponseCode = (string) Properties.Settings.Default["Response_Code"];
-        private static string FactoryName = (string)Properties.Settings.Default["Factory_Class_Name"];
-        public static bool UsePrimitiveCombination = (bool)Properties.Settings.Default["UseprimitiveCombination"];
-        //"REMOTE_LOG 50, DELAYED_CRASH 50";
-        //"CRASH 100,DO_NOTHONG 40";
-        //, DELAYED_CRASH 0,REMOTE_LOG 0";
-        public static int NODES_NETWORK = (int)Properties.Settings.Default["NodeS_Network"];
-        public static int boolCastMode = (int)Properties.Settings.Default["BoolCastMode"];
-        public static string ignore_transform = (string)Properties.Settings.Default["Ignore_Annotation"];
-
-        // this will be the index of where not to continue using the first option
-        public static List<string> primitveTypes = new List<string>()
-        {"byte","sbyte","int","uint","short","ushort","long","ulong","float","double","char","bool","string","decimal"};
-        public static List<string> numericPrimitveTypes = new List<string>()
-        {"byte","sbyte","int","uint","short","ushort","long","ulong","float","double","decimal"};
-
         private static Random rand = new Random();
 
         public static void Main(string[] args)
@@ -42,9 +24,9 @@ namespace SimpleRoslynAnalysis
 
 
             // .sln path could contain more than one project
-            string pathToSolution = (string)Properties.Settings.Default["Path_To_Solution"];
+            string pathToSolution = GlobalVariables.PathToSolution;
             //const string pathToSolution = @"C:\Users\IBM\Desktop\roslyn\roslyn-master\roslyn-master\src\Samples\Samples.sln";
-            string projectName = (string)Properties.Settings.Default["Project_Name"];
+            string projectName = GlobalVariables.ProjectName;
 
             // start Roslyn workspace
             MSBuildWorkspace workspace = MSBuildWorkspace.Create();
@@ -142,7 +124,7 @@ namespace SimpleRoslynAnalysis
                         // do not add methods that should be ignored in transformation to the list
                         //Console.WriteLine(methodObject.Comment);
 
-                        if (!methodObject.Comment.Contains(ignore_transform) && methodObject.Visibility.Trim().ToLower() == "public")
+                        if (!methodObject.Comment.Contains(GlobalVariables.ignore_transform) && methodObject.Visibility.Trim().ToLower() == "public")
                         {
                             methodsList.Add(methodObject);
                         }
@@ -153,7 +135,7 @@ namespace SimpleRoslynAnalysis
 
             }// done looping the documents
             Console.WriteLine("Number of methods in the first list " + methodsList.Count());
-            ResponceCodes.SetResponseSettings(ResponseCode, methodsList.Count());
+            Responces.SetResponseSettings(GlobalVariables.ResponseCode, methodsList.Count());
             // start of phase two:
             // step 2 
             // parse the pex report 
@@ -189,107 +171,9 @@ namespace SimpleRoslynAnalysis
             // dictonary the key is the checking function name and the value is the checked one 
             // value cannot be a void method??
 
-
-            Dictionary<String, Method> checkingNetwork = new Dictionary<String, Method>();
-            // used to register what was assigned to prevent double assignments
-            // in this loop we create netwroks not only one, but they are all stored in here
-            // also we complete missing code snippets        
-            int startIndex = 0;
-            for (int i = 0; i < methodsList.Count; i++)
-            {
-                if (i % NODES_NETWORK == 0)
-                {
-                    startIndex = i;
-                }
-                // a round robin relation
-                Method checkingMethod = methodsList[i];
-                Method checkedMethod = null;
-                // will leave ignoring voids for later stage
-
-                // last item in a netwrok, or last item at all
-                //  think about edge cases in here, one item left in a network or 2 ..etc
-                if ((i % NODES_NETWORK) == NODES_NETWORK - 1 || (i == methodsList.Count - 1))
-                {
-                    // last item in smaller networ, points to first item in smaller network
-                    if (startIndex != i)// cases of one item is not added
-                        checkedMethod = methodsList[startIndex];
-                }
-                // normal round robin
-                else
-                {
-                    // this is not the last item in smaller network
-                    checkedMethod = methodsList[i + 1];
-                }
-
-                // replace the name of the checking function in the checking code now.
-                // add the response mechanisim
-                if (checkedMethod != null)
-                {
-                    string value = checkedMethod.ChallangeCode;
-                    if (value != null)
-                    {
-
-                        // put the second option if there
-                        if (i > ResponceCodes.ResponseSwitchIndex && ResponceCodes.ResponseSecondOption != "")
-                        {
-                            if (ResponceCodes.ResponseSecondOption == ResponceCodes.RESPONSE_CODE_2 && UsePrimitiveCombination)
-                            { // for crash we can use the primitive combination if parent and child are primitives
-
-                                //Console.WriteLine(checkedMethod.ReturnType + checkingMethod.ReturnType);
-                                if (isPrimitive(checkedMethod.ReturnType) && isPrimitive(checkingMethod.ReturnType))
-                                {// both primitve functions
-                                    checkedMethod.PrimitiveCombination = true;
-                                    value = removeResponsePart(value);
-                                    checkedMethod = createReturnStatement(checkedMethod, checkingMethod);
-
-                                }
-                                else
-                                {
-                                    value = value.Replace("RESPONSE", ResponceCodes.GetResponse(1, checkedMethod.Id));
-                                }
-                            }
-                            else// regular scnd option
-                            {
-                                value = value.Replace("RESPONSE", ResponceCodes.GetResponse(1, checkedMethod.Id));
-                            }
-
-
-                        }
-                        else // first option
-                        {
-                            if (ResponceCodes.ResponseFirstOption == ResponceCodes.RESPONSE_CODE_2 && UsePrimitiveCombination)
-                            { // for crash we can use the primitive combination
-
-                                if (isPrimitive(checkedMethod.ReturnType) && isPrimitive(checkingMethod.ReturnType))
-                                {// both primitve functions
-                                 //String returnSyntax = createReturnSyntax(checkedMethod, chec)
-                                    checkedMethod.PrimitiveCombination = true;
-                                    value = removeResponsePart(value);
-                                    checkedMethod = createReturnStatement(checkedMethod, checkingMethod);
-                                }
-                                else
-                                {
-                                    value = value.Replace("RESPONSE", ResponceCodes.GetResponse(0, checkedMethod.Id));
-                                }
-                            }
-                            else
-                            {
-                                value = value.Replace("RESPONSE", ResponceCodes.GetResponse(0, checkedMethod.Id));
-                            }
-                        }
-
-
-                        checkedMethod.ChallangeCode = value;
-                    }
-                    //Console.WriteLine("adding id "+checkingMethod.Id);
-                    //todo there are cases of same function id in overloading
-                    checkingNetwork[checkingMethod.Id] = checkedMethod;
-                }
-            }// end of for
-
-
-
-
+            //NETWORK GENERATION!!!
+            var checkingNetwork = NetworkGenerator.GenerateNetwork(methodsList);
+            
             //methodsList.Print();
             Console.WriteLine("Netwrork of all methods");
             checkingNetwork.Print();
@@ -386,7 +270,7 @@ namespace SimpleRoslynAnalysis
                 root = Formatter.Format(root, workspace, options);
                 string fileContent = UsingList.AddUsingListToOfFile(disablePragmaWarningCS0618(root.ToFullString()));
                 // sampleProjectToAnalyze.Documents.Where( doc => doc.)
-                string augmentedDocSaveDir = String.Format("{0}{1}", (string)Properties.Settings.Default["Output_Dir"], GenerateDocumentFolderPath(document.Folders));
+                string augmentedDocSaveDir = String.Format("{0}{1}", GlobalVariables.OutputDirectory, GenerateDocumentFolderPath(document.Folders));
                 string augmentedDocSavePath = String.Format("{0}{1}", augmentedDocSaveDir, document.Name);
                 Directory.CreateDirectory(augmentedDocSaveDir);
                 File.WriteAllText(augmentedDocSavePath, fileContent);
@@ -394,7 +278,7 @@ namespace SimpleRoslynAnalysis
 
             // add the factory class
             CompilationUnitSyntax factoryClass = InsertFactoryClass(Parser.classesForFactory);
-            File.WriteAllText((string)Properties.Settings.Default["Output_Dir"] + FactoryName + ".cs", factoryClass.ToFullString());
+            File.WriteAllText(GlobalVariables.OutputDirectory + GlobalVariables.FactoryName + ".cs", factoryClass.ToFullString());
 
         }
 
@@ -409,17 +293,17 @@ namespace SimpleRoslynAnalysis
             return path;
         }
 
-        private static Method createReturnStatement(Method child, Method parent)
+        public static Method CreateReturnStatement(Method child, Method parent)
         { // this method will work based on the 16 cases of combination that are in the design
 
             string parentReturntype = parent.ReturnType;
             string childReturnType = child.ReturnType;
             string operand = "";
             string returnStatement = "";
-            if (isNumeric(parentReturntype) || parentReturntype.Trim().ToLower() == "char")
+            if (Types.IsNumeric(parentReturntype) || parentReturntype.Trim().ToLower() == "char")
             { // cases 1-4 and 9-12
                 operand = " + ";
-                if (isNumeric(childReturnType) || childReturnType.Trim().ToLower() == "char")
+                if (Types.IsNumeric(childReturnType) || childReturnType.Trim().ToLower() == "char")
                 { // case 1, 3 return res + (expected - actual)
                     returnStatement = createNumericExpression(child.variableName, child.ResultValue);
                 }
@@ -438,7 +322,7 @@ namespace SimpleRoslynAnalysis
             else if (parentReturntype.Trim() == "bool")
             { // cases 5-8
                 operand = " ^ ";
-                if (isNumeric(childReturnType) || childReturnType.Trim().ToLower() == "bool" || childReturnType.Trim().ToLower() == "char" || childReturnType.Trim().ToLower() == "string")
+                if (Types.IsNumeric(childReturnType) || childReturnType.Trim().ToLower() == "bool" || childReturnType.Trim().ToLower() == "char" || childReturnType.Trim().ToLower() == "string")
                 { // case 5  6 7 8 return res && (expected == actual)
                     returnStatement = createNagationLogicalExpression(child.variableName, child.ResultValue, false);
                 }
@@ -447,7 +331,7 @@ namespace SimpleRoslynAnalysis
             if (parentReturntype.Trim().ToLower() == "string")
             { // cases 13-16
                 operand = ".Substring($)";
-                if (isNumeric(childReturnType) || childReturnType.Trim().ToLower() == "char")
+                if (Types.IsNumeric(childReturnType) || childReturnType.Trim().ToLower() == "char")
                 { // case 14, 16 return res.Substring(act-exp)
                     returnStatement = operand.Replace("$", createNumericExpression(child.variableName, child.ResultValue));
 
@@ -492,11 +376,11 @@ namespace SimpleRoslynAnalysis
                 // 2: Convert.ToInt32
                 // other: choose randomly 
 
-                if (boolCastMode == 1)
+                if (GlobalVariables.BoolCastMode == 1)
                 {
                     return "((" + variableName + " != " + resultValue + ")" + "? 1 : 0)";
                 }
-                else if (boolCastMode == 2)
+                else if (GlobalVariables.BoolCastMode == 2)
                 {
                     return " Convert.ToInt32(" + variableName + " != " + resultValue + ")";
                 }
@@ -524,33 +408,6 @@ namespace SimpleRoslynAnalysis
             }
 
             return "(" + variableName + " ^ " + resultValue + ")";
-        }
-
-        private static bool isNumeric(string parentReturntype)
-        {
-            return (numericPrimitveTypes.Contains(parentReturntype.Trim().ToLower()));
-
-        }
-
-        private static string removeResponsePart(string value)
-        {
-            // for primitive combination we need to remove the response part
-            //if (!Environment.StackTrace.Contains("ConsoleApplication1.Program.isGood"))
-            //{
-            //    Program program;
-            //    program = ClassFactory.CreateProgram();
-            //    b = program.isGood();
-
-            //   --> if (false != b) { RESPONSE }<--
-
-            //}
-
-            int lastSemiColonIndex = value.LastIndexOf(';');
-            value = value.Substring(0, lastSemiColonIndex + 1) + "\n}";
-
-
-
-            return value;
         }
 
 
@@ -646,7 +503,7 @@ namespace SimpleRoslynAnalysis
 
         public static CompilationUnitSyntax InsertFactoryClass(HashSet<Class> classesForFactory)
         {
-            var tree = SyntaxFactory.ParseSyntaxTree(@"class " + FactoryName + @"
+            var tree = SyntaxFactory.ParseSyntaxTree(@"class " + GlobalVariables.FactoryName + @"
 {
 }");
             var compilationUnit = (CompilationUnitSyntax)tree.GetRoot();
@@ -670,8 +527,6 @@ namespace SimpleRoslynAnalysis
                 i++;
             }
 
-
-
             // Add this new MethodDeclarationSyntax to the above ClassDeclarationSyntax.
             ClassDeclarationSyntax newClassDeclaration =
                 classDeclaration.AddMembers(methods);
@@ -683,12 +538,6 @@ namespace SimpleRoslynAnalysis
             // normalize the whitespace
             newCompilationUnit = newCompilationUnit.NormalizeWhitespace("    ");
             return newCompilationUnit;
-
-        }
-
-        private static bool isPrimitive(String type)
-        {
-            return (primitveTypes.Contains(type.Trim().ToLower()));
 
         }
 
