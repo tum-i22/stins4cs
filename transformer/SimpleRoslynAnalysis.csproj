@@ -108,6 +108,7 @@
     <Compile Include="Class.cs" />
     <Compile Include="Exploration.cs" />
     <Compile Include="ExtensionMethods.cs" />
+    <Compile Include="GlobalVariables.cs" />
     <Compile Include="Method.cs" />
     <Compile Include="NetworkGenerator.cs" />
     <Compile Include="Parameter.cs" />
@@ -122,6 +123,7 @@
     </Compile>
     <Compile Include="ResponceCodes.cs" />
     <Compile Include="Settings.cs" />
+    <Compile Include="Types.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config">
