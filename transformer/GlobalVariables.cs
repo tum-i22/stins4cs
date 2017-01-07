@@ -35,5 +35,7 @@ namespace SimpleRoslynAnalysis
         internal static int DelayedCrashUpperBound { get { return (int)Properties.Settings.Default["Delayed_Crash_Upper_Bound_Sec"]; } }
         internal static string LogMessage { get { return "\"" + (string)Properties.Settings.Default["Log_Message"] + "\""; } }
 
+        internal static bool NonCyclicNetworks {  get { return (bool)Properties.Settings.Default["NonCyclicNetwork"]; } }
+
     }
 }
