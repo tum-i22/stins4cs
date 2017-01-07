@@ -37,7 +37,7 @@ namespace SimpleRoslynAnalysis
 
             int methodsWithChallengeCodeCount = methodsList.Where(m => m.HasChallengeCode).Count();
             int fullNetworks = methodsWithChallengeCodeCount / GlobalVariables.NODES_NETWORK;
-            int nodesInPartialNetworks = (methodsList.Count - methodsWithChallengeCodeCount) % GlobalVariables.NODES_NETWORK;
+            int nodesInPartialNetworks = methodsWithChallengeCodeCount % GlobalVariables.NODES_NETWORK;
 
             int currentStartIndex = 0;
             int currentEndIndex = GlobalVariables.NODES_NETWORK;
@@ -174,7 +174,7 @@ namespace SimpleRoslynAnalysis
             // 2 - node n = does not have a challenge code
             int methodsWithChallengeCodeCount = methodsList.Where(m => m.HasChallengeCode).Count();
             int fullNetworks = methodsWithChallengeCodeCount / (GlobalVariables.NODES_NETWORK - 1);
-            int nodesInPartialNetworks = (methodsList.Count - methodsWithChallengeCodeCount) % (GlobalVariables.NODES_NETWORK - 1);
+            int nodesInPartialNetworks = methodsWithChallengeCodeCount % (GlobalVariables.NODES_NETWORK - 1);
 
             int currentStartIndex = 0;
             int currentEndIndex = GlobalVariables.NODES_NETWORK - 1;
