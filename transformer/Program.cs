@@ -152,7 +152,7 @@ namespace SimpleRoslynAnalysis
                 // this can be null when the method is not in the list (ignored for instance)
                 if (result != null)
                 {
-                    result.ChallengeCode = exp.ChallengeCode;
+                    result.ChallangeCode = exp.ChallangeCode;
                     result.ResultValue = exp.ResultValue;
                     result.variableName = exp.variableName;
                 }
@@ -172,7 +172,7 @@ namespace SimpleRoslynAnalysis
             // value cannot be a void method??
 
             //NETWORK GENERATION!!!
-            var checkingNetwork = NetworkGenerator.GenerateCheckingNetwork(methodsList);
+            var checkingNetwork = NetworkGenerator.GenerateNetwork(methodsList);
             
             //methodsList.Print();
             Console.WriteLine("Netwrork of all methods");
@@ -415,14 +415,14 @@ namespace SimpleRoslynAnalysis
         {
 
             //TODO decide in case of empty
-            //Console.WriteLine(checkedMethod.ChallengeCode);
-            if (checkedMethod.ChallengeCode == null || (checkedMethod.ChallengeCode.Length == 0))
+            //Console.WriteLine(checkedMethod.ChallangeCode);
+            if (checkedMethod.ChallangeCode == null || (checkedMethod.ChallangeCode.Length == 0))
             {
                 return currMethod;
-                //checkedMethod.ChallengeCode = "// testing empty";
+                //checkedMethod.ChallangeCode = "// testing empty";
             }
 
-            var checkText = checkedMethod.ChallengeCode;
+            var checkText = checkedMethod.ChallangeCode;
             string aLine = null;
             // create and fill statement list 
             List<StatementSyntax> statements = new List<StatementSyntax>();

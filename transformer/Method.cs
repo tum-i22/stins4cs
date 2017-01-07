@@ -30,12 +30,10 @@ namespace SimpleRoslynAnalysis.Model
 
         public String CombinedReturnStatement { get; set; }
 
-        public String ChallengeCode { get; set; }
-
-        public Boolean HasChallengeCode { get { return ChallengeCode != null ? true : false; } }
+        public String ChallangeCode { get; set; }
         public Method()
         {
-            //this.ChallengeCodeList = new List<string>();
+            //this.ChallangeCodeList = new List<string>();
         }
 
         public Method(string name, string fullName, string id, string visibility, Boolean isStatic, string returnType, List<Parameter> parameters, string className, string comment)
@@ -51,7 +49,7 @@ namespace SimpleRoslynAnalysis.Model
 
             this.Comment = comment;
 
-            //this.ChallengeCodeList = new List<string>();
+            //this.ChallangeCodeList = new List<string>();
 
         }
 
@@ -63,8 +61,8 @@ namespace SimpleRoslynAnalysis.Model
 
         public override string ToString()
         {
-            return "Method: " + Id + (( ChallengeCode != null && ChallengeCode.Length>0 )?  "(true)" : "(false)");
-            //+ FullName+" "+Id+" "+ Visibility+" "+IsStatic+" "+ReturnType+" "+Parameters+" "+ClassName+" "+Comment+" "+ ChallengeCodeList.Count+"\n" ;
+            return "Method: " + Id + (( ChallangeCode != null && ChallangeCode.Length>0 )?  "(true)" : "(false)");
+            //+ FullName+" "+Id+" "+ Visibility+" "+IsStatic+" "+ReturnType+" "+Parameters+" "+ClassName+" "+Comment+" "+ ChallangeCodeList.Count+"\n" ;
         }
 
 
