@@ -297,7 +297,7 @@ namespace SimpleRoslynAnalysis
 
                         if (codeLine.Contains("Assert."))// this is the check statement
                         {
-                            codeLine = HandleAsserStatement(codeLine,codeStatements);   
+                            codeLine = HandleAssertStatement(codeLine,codeStatements);   
                         }
 
                         
@@ -338,7 +338,7 @@ namespace SimpleRoslynAnalysis
 
                 //if contains s0 - definition of variable used to test (?!)
 
-                explorationObject.ChallangeCode = transformedCode.ToString();
+                explorationObject.ChallengeCode = transformedCode.ToString();
 
                 //Console.WriteLine("trans" + transformedCode.ToString());
 
@@ -353,7 +353,7 @@ namespace SimpleRoslynAnalysis
 
         }
 
-        private string HandleAsserStatement(string codeLine, List<string> codeStatements)
+        private string HandleAssertStatement(string codeLine, List<string> codeStatements)
         {
             if (codeLine.Contains("AreEqual"))// this is a comparison for the type functions; 
                                               //Assert.AreEqual<string>("01-Jan-01 12:00:00 AM", s);
