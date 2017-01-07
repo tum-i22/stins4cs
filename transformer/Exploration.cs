@@ -17,13 +17,13 @@ namespace SimpleRoslynAnalysis
         public String ResultValue { get; set; }
 
         public String variableName { get; set; }
-        public String ChallangeCode { get; set; }
+        public String ChallengeCode { get; set; }
 
         public bool IsStaticClass { get; set; }
 
         public Exploration()
         {
-            //this.ChallangeCodeList = new List<string>();
+            //this.ChallengeCodeList = new List<string>();
         }
         public string FullFunctionName
         {
