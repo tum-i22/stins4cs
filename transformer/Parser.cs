@@ -262,7 +262,7 @@ namespace SimpleRoslynAnalysis
 
                         if (Types.primitiveTypes.Any(str => codeLine.Trim().StartsWith(str)))// this is a primitive declaration
                         {
-                            if ((Responces.ResponseSecondOption == Responces.RESPONSE_CODE_2 || Responces.ResponseFirstOption == Responces.RESPONSE_CODE_2) && GlobalVariables.UsePrimitiveCombination)
+                            if ((ResponceCodes.ResponseSecondOption == ResponceCodes.RESPONSE_CODE_2 || ResponceCodes.ResponseFirstOption == ResponceCodes.RESPONSE_CODE_2) && GlobalVariables.UsePrimitiveCombination)
                             { // we have primitive declration, we have the one of the options to crash and the option is enabled
                               // then we will be moving this declration even if it was not used in the primitive combination
 

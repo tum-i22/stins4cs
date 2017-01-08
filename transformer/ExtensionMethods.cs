@@ -56,8 +56,8 @@ namespace SimpleRoslynAnalysis
 
         public static T GetRandom<T>(this List<T> list)
         {
-            Random rnd = new Random();
-            int r = rnd.Next(list.Count);
+            
+            int r = GlobalVariables.Random.Next(list.Count);
             return list[r];
         }
     }
