@@ -143,9 +143,9 @@ namespace SimpleRoslynAnalysis.Properties {
         [global::System.Configuration.ApplicationScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("True")]
-        public string NonCyclicNetwork {
+        public bool NonCyclicNetwork {
             get {
-                return ((string)(this["NonCyclicNetwork"]));
+                return ((bool)(this["NonCyclicNetwork"]));
             }
         }
     }
