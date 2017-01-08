@@ -12,11 +12,11 @@ namespace SimpleRoslynAnalysis
     {
         public static Dictionary<String, Method> GenerateCheckingNetwork(List<Method> methodsList)
         {
-            if (!GlobalVariables.UsePrimitiveCombination)
+            if (!GlobalVariables.UsePrimitiveCombination && !GlobalVariables.NonCyclicNetworks)
             {
                 return NEW_GenerateCyclicCheckingNetwork(methodsList);
             }
-            else if (!GlobalVariables.NonCyclicNetworks)
+            else if (GlobalVariables.NonCyclicNetworks)
             {
                 return GenerateNonCyclicCheckingNetworks(methodsList);
             }
@@ -170,21 +170,19 @@ namespace SimpleRoslynAnalysis
             Dictionary<String, Method> checkingNetwork = new Dictionary<String, Method>();
 
             //network consists of:
-            // 1 - nodes 1 -> (n-1) = have challenge code
-            // 2 - node n = does not have a challenge code
             int methodsWithChallengeCodeCount = methodsList.Where(m => m.HasChallengeCode).Count();
             int fullNetworks = methodsWithChallengeCodeCount / (GlobalVariables.NODES_NETWORK - 1);
             int nodesInPartialNetworks = methodsWithChallengeCodeCount % (GlobalVariables.NODES_NETWORK - 1);
 
             int currentStartIndex = 0;
-            int currentEndIndex = GlobalVariables.NODES_NETWORK - 1;
+            int currentEndIndex = GlobalVariables.NODES_NETWORK;
 
             //handle full cycles
             for (int i = 0; i < fullNetworks; i++)
             {
                 checkingNetwork = CreateNonCyclicNetwork(methodsList, currentStartIndex, currentEndIndex, checkingNetwork);
-                currentStartIndex += GlobalVariables.NODES_NETWORK - 1;
-                currentEndIndex += GlobalVariables.NODES_NETWORK - 1;
+                currentStartIndex += GlobalVariables.NODES_NETWORK;
+                currentEndIndex += GlobalVariables.NODES_NETWORK;
             }
 
 
@@ -275,19 +273,5 @@ namespace SimpleRoslynAnalysis
             }
             return checkingNetwork;
         }
-
-        /*private static string ReplaceResponce(string value, int i, string methodName, bool usePrimitiveCombination)
-        {
-            if(usePrimitiveCombination)
-            {
-                checkedMethod.PrimitiveCombination = true;
-                value = Responces.RemoveResponsePart(value);
-                checkedMethod = Transformer.CreateReturnStatement(checkedMethod, checkingMethod);
-            }
-            else
-            {
-                return value.Replace("RESPONSE", Responces.GetResponse(i, methodName));
-            }
-        }*/
     }
 }
