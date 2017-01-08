@@ -109,51 +109,51 @@ namespace SimpleRoslynAnalysis
                     {
 
                         // put the second option if there
-                        if (i > Responces.ResponseSwitchIndex && Responces.ResponseSecondOption != "")
+                        if (i > ResponceCodes.ResponseSwitchIndex && ResponceCodes.ResponseSecondOption != "")
                         {
-                            if (Responces.ResponseSecondOption == Responces.RESPONSE_CODE_2 && GlobalVariables.UsePrimitiveCombination)
+                            if (ResponceCodes.ResponseSecondOption == ResponceCodes.RESPONSE_CODE_2 && GlobalVariables.UsePrimitiveCombination)
                             { // for crash we can use the primitive combination if parent and child are primitives
 
                                 //Console.WriteLine(checkedMethod.ReturnType + checkingMethod.ReturnType);
                                 if (Types.IsPrimitive(checkedMethod.ReturnType) && Types.IsPrimitive(checkingMethod.ReturnType))
                                 {// both primitve functions
                                     checkedMethod.PrimitiveCombination = true;
-                                    value = Responces.RemoveResponsePart(value);
-                                    checkedMethod = Transformer.CreateReturnStatement(checkedMethod, checkingMethod);
+                                    value = ResponceCodes.RemoveResponsePart(value);
+                                    checkedMethod = Types.CreateReturnStatement(checkedMethod, checkingMethod);
 
                                 }
                                 else
                                 {
-                                    value = value.Replace("RESPONSE", Responces.GetResponse(1, checkedMethod.Id));
+                                    value = value.Replace("RESPONSE", ResponceCodes.GetResponse(1, checkedMethod.Id));
                                 }
                             }
                             else// regular scnd option
                             {
-                                value = value.Replace("RESPONSE", Responces.GetResponse(1, checkedMethod.Id));
+                                value = value.Replace("RESPONSE", ResponceCodes.GetResponse(1, checkedMethod.Id));
                             }
 
 
                         }
                         else // first option
                         {
-                            if (Responces.ResponseFirstOption == Responces.RESPONSE_CODE_2 && GlobalVariables.UsePrimitiveCombination)
+                            if (ResponceCodes.ResponseFirstOption == ResponceCodes.RESPONSE_CODE_2 && GlobalVariables.UsePrimitiveCombination)
                             { // for crash we can use the primitive combination
 
                                 if (Types.IsPrimitive(checkedMethod.ReturnType) && Types.IsPrimitive(checkingMethod.ReturnType))
                                 {// both primitve functions
                                  //String returnSyntax = createReturnSyntax(checkedMethod, chec)
                                     checkedMethod.PrimitiveCombination = true;
-                                    value = Responces.RemoveResponsePart(value);
-                                    checkedMethod = Transformer.CreateReturnStatement(checkedMethod, checkingMethod);
+                                    value = ResponceCodes.RemoveResponsePart(value);
+                                    checkedMethod = Types.CreateReturnStatement(checkedMethod, checkingMethod);
                                 }
                                 else
                                 {
-                                    value = value.Replace("RESPONSE", Responces.GetResponse(0, checkedMethod.Id));
+                                    value = value.Replace("RESPONSE", ResponceCodes.GetResponse(0, checkedMethod.Id));
                                 }
                             }
                             else
                             {
-                                value = value.Replace("RESPONSE", Responces.GetResponse(0, checkedMethod.Id));
+                                value = value.Replace("RESPONSE", ResponceCodes.GetResponse(0, checkedMethod.Id));
                             }
                         }
 
@@ -207,6 +207,7 @@ namespace SimpleRoslynAnalysis
             {
                 method1 = methodsWithChallengeCode[startIndex];
                 method2 = methodsWithChallengeCode[endIndex];
+                method2 = ResponceCodes.SubstituteRESPONCEWithResponceCode(startIndex, method1, method2);
                 checkingNetwork[method1.Id] = method2;
             }
             //case where more than 1 node but less than NODE_NETWORK
@@ -227,6 +228,7 @@ namespace SimpleRoslynAnalysis
                         method2 = methodsWithChallengeCode[i + 1];
                     }
 
+                    method2 = ResponceCodes.SubstituteRESPONCEWithResponceCode(i, method1, method2);
                     checkingNetwork[method1.Id] = method2;
 
                 }
@@ -248,6 +250,7 @@ namespace SimpleRoslynAnalysis
             {
                 method1 = methodsWithChallengeCode[startIndex];
                 method2 = methodWithoutChallengeCode.GetRandom();
+                method2 = ResponceCodes.SubstituteRESPONCEWithResponceCode(startIndex, method1, method2);
                 checkingNetwork[method1.Id] = method2;
             }
             //case where more than 1 node but less than NODE_NETWORK
@@ -267,6 +270,7 @@ namespace SimpleRoslynAnalysis
                         method2 = methodsWithChallengeCode[i + 1];
                     }
 
+                    method2 = ResponceCodes.SubstituteRESPONCEWithResponceCode(i, method1, method2);
                     checkingNetwork[method1.Id] = method2;
                 }
             }

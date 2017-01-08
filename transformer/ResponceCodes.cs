@@ -1,4 +1,5 @@
-﻿using System;
+﻿using SimpleRoslynAnalysis.Model;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -6,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace SimpleRoslynAnalysis
 {
-    static class Responces
+    static class ResponceCodes
     {
         public const string RESPONSE_CODE_1 = "DO_NOTHONG";
         public const string RESPONSE_CODE_2 = "CRASH";
@@ -74,13 +75,13 @@ namespace SimpleRoslynAnalysis
                 string[] optionSettings = options[i].Split(' '); // second is the weight
                 if (i == 0)
                 {
-                    Responces.ResponseFirstOption = optionSettings[0];
+                    ResponceCodes.ResponseFirstOption = optionSettings[0];
                     double weight = double.Parse(optionSettings[1]);
                     ResponseSwitchIndex = (int)((weight / 100) * methodsCount);
                 }
                 else
                 {
-                    Responces.ResponseSecondOption = optionSettings[0];
+                    ResponceCodes.ResponseSecondOption = optionSettings[0];
                 }
             }
 
@@ -107,6 +108,56 @@ namespace SimpleRoslynAnalysis
 
 
             return value;
+        }
+
+        public static Method SubstituteRESPONCEWithResponceCode(int index, Method checkingMethod, Method checkedMethod)
+        {
+            int i = index;
+
+            if (i > ResponceCodes.ResponseSwitchIndex && ResponceCodes.ResponseSecondOption != "")
+            {
+                checkedMethod = ReplaceResponce(ResponceCodes.ResponseSecondOption, 1, checkingMethod, checkedMethod);
+            }
+            else // first option
+            {
+                checkedMethod = ReplaceResponce(ResponceCodes.ResponseFirstOption, 0, checkingMethod, checkedMethod);
+            }
+
+            return checkedMethod;
+        }
+
+        private static Method ReplaceResponce(string responceOption, int i, Method checkingMethod, Method checkedMethod)
+        {
+            var value = checkedMethod.ChallengeCode;
+
+            if(value == null)
+            {
+                return checkedMethod;
+            }
+
+            if (responceOption == ResponceCodes.RESPONSE_CODE_2 && GlobalVariables.UsePrimitiveCombination)
+            { // for crash we can use the primitive combination
+
+                if (Types.IsPrimitive(checkedMethod.ReturnType) && Types.IsPrimitive(checkingMethod.ReturnType))
+                {// both primitve functions
+                 //String returnSyntax = createReturnSyntax(checkedMethod, chec)
+                    checkedMethod.PrimitiveCombination = true;
+                    value = ResponceCodes.RemoveResponsePart(value);
+                    checkedMethod = Types.CreateReturnStatement(checkedMethod, checkingMethod);
+                }
+                else
+                {
+                    value = value.Replace("RESPONSE", ResponceCodes.GetResponse(i, checkedMethod.Id));
+                }
+            }
+            else
+            {
+                value = value.Replace("RESPONSE", ResponceCodes.GetResponse(i, checkedMethod.Id));
+            }
+
+            checkedMethod.ChallengeCode = value;
+
+            return checkedMethod;
         }
     }
 }
