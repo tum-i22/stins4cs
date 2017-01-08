@@ -17,8 +17,6 @@ namespace SimpleRoslynAnalysis
 {
     class Transformer
     {
-        private static Random rand = new Random();
-
         public static void Main(string[] args)
         {
 
@@ -135,7 +133,7 @@ namespace SimpleRoslynAnalysis
 
             }// done looping the documents
             Console.WriteLine("Number of methods in the first list " + methodsList.Count());
-            Responces.SetResponseSettings(GlobalVariables.ResponseCode, methodsList.Count());
+            ResponceCodes.SetResponseSettings(GlobalVariables.ResponseCode, methodsList.Count());
             // start of phase two:
             // step 2 
             // parse the pex report 
@@ -291,123 +289,6 @@ namespace SimpleRoslynAnalysis
             }
 
             return path;
-        }
-
-        public static Method CreateReturnStatement(Method child, Method parent)
-        { // this method will work based on the 16 cases of combination that are in the design
-
-            string parentReturntype = parent.ReturnType;
-            string childReturnType = child.ReturnType;
-            string operand = "";
-            string returnStatement = "";
-            if (Types.IsNumeric(parentReturntype) || parentReturntype.Trim().ToLower() == "char")
-            { // cases 1-4 and 9-12
-                operand = " + ";
-                if (Types.IsNumeric(childReturnType) || childReturnType.Trim().ToLower() == "char")
-                { // case 1, 3 return res + (expected - actual)
-                    returnStatement = createNumericExpression(child.variableName, child.ResultValue);
-                }
-                else if (childReturnType.Trim().ToLower() == "bool")
-                { // case 2 res+ (int) (exp xor actual)
-                    returnStatement = createXorExpression(child.variableName, child.ResultValue, true);
-                }
-                else if (childReturnType.Trim().ToLower() == "string")
-                { // case 4 res+ (int) (exp != actual)
-                    returnStatement = createNagationLogicalExpression(child.variableName, child.ResultValue, true);
-                }
-
-
-                returnStatement = operand + returnStatement;
-            }// end of numeric parent
-            else if (parentReturntype.Trim() == "bool")
-            { // cases 5-8
-                operand = " ^ ";
-                if (Types.IsNumeric(childReturnType) || childReturnType.Trim().ToLower() == "bool" || childReturnType.Trim().ToLower() == "char" || childReturnType.Trim().ToLower() == "string")
-                { // case 5  6 7 8 return res && (expected == actual)
-                    returnStatement = createNagationLogicalExpression(child.variableName, child.ResultValue, false);
-                }
-                returnStatement = operand + returnStatement;
-            }// end of bool parent
-            if (parentReturntype.Trim().ToLower() == "string")
-            { // cases 13-16
-                operand = ".Substring($)";
-                if (Types.IsNumeric(childReturnType) || childReturnType.Trim().ToLower() == "char")
-                { // case 14, 16 return res.Substring(act-exp)
-                    returnStatement = operand.Replace("$", createNumericExpression(child.variableName, child.ResultValue));
-
-                }
-                else if (childReturnType.Trim().ToLower() == "bool")
-                { // case 15 return res.Substring(act-exp)
-                    returnStatement = operand.Replace("$", createXorExpression(child.variableName, child.ResultValue, true));
-                }
-                else if (childReturnType.Trim().ToLower() == "string")
-                { // case 16 return res.Substring(act-exp)
-                    returnStatement = operand.Replace("$", createNagationLogicalExpression(child.variableName, child.ResultValue, true));
-                }
-
-            }
-
-
-            //Console.WriteLine(child.variableName + "==" + parent.ReturnType + "--" + child.ReturnType + "---" + returnStatement);
-
-
-            child.CombinedReturnStatement = returnStatement;
-            return child;
-        }
-
-        private static string createNumericExpression(string variableName, string resultValue)
-        {
-            // this method will create the expressions like (expected - actual) 
-
-            return " (int)(" + variableName + " - " + resultValue + ")";
-        }
-
-
-
-
-
-        private static string createNagationLogicalExpression(string variableName, string resultValue, bool castToInt)
-        {
-            // this method will create the expressions like (expected==actual)
-            
-            if (castToInt)
-            {      //  depending on the setting BoolCastMode:
-                // 1: inline if
-                // 2: Convert.ToInt32
-                // other: choose randomly 
-
-                if (GlobalVariables.BoolCastMode == 1)
-                {
-                    return "((" + variableName + " != " + resultValue + ")" + "? 1 : 0)";
-                }
-                else if (GlobalVariables.BoolCastMode == 2)
-                {
-                    return " Convert.ToInt32(" + variableName + " != " + resultValue + ")";
-                }
-                else
-                {
-                    if ((rand.Next(1, 1000) % 2) == 0)
-                        return " Convert.ToInt32(" + variableName + " != " + resultValue + ")";
-                    else
-                        return "((" + variableName + " != " + resultValue + ")" + "? 1 : 0)";
-                }
-            }
-            return "(" + variableName + " != " + resultValue + ")";
-        }
-
-        private static string createXorExpression(string variableName, string resultValue, bool castToInt)
-        {
-            // this method will create the expressions like int (expected^actual)
-            if (castToInt)
-            {
-                // choose randomly 
-                //if ((rand.Next(1, 1000) % 2) == 0)
-                    return " Convert.ToInt32(" + variableName + " ^ " + resultValue + ")";
-               // else
-               //     return "((" + variableName + " ^ " + resultValue + ")" + "? 1 : 0)";
-            }
-
-            return "(" + variableName + " ^ " + resultValue + ")";
         }
 
 

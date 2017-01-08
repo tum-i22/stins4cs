@@ -9,6 +9,7 @@ namespace SimpleRoslynAnalysis
 {
     class GlobalVariables
     {
+        internal static Random Random = new Random();
         internal static string ResponseCode { get { return (string)Properties.Settings.Default["Response_Code"]; } }
         internal static string FactoryName { get { return (string)Properties.Settings.Default["Factory_Class_Name"]; } }
         internal static bool UsePrimitiveCombination { get { return (bool)Properties.Settings.Default["UseprimitiveCombination"]; } }
