@@ -10,8 +10,16 @@ namespace SimpleRoslynAnalysis
 {
     class NetworkGenerator
     {
+        private static int methodsWithChallengeCodeCount;
+        private static int fullNetworks;
+        private static int nodesInPartialNetworks;
+
         public static Dictionary<String, Method> GenerateCheckingNetwork(List<Method> methodsList)
         {
+            methodsWithChallengeCodeCount = methodsList.Where(m => m.HasChallengeCode).Count();
+            fullNetworks = methodsWithChallengeCodeCount / GlobalVariables.NODES_NETWORK;
+            nodesInPartialNetworks = methodsWithChallengeCodeCount % GlobalVariables.NODES_NETWORK;
+
             if (!GlobalVariables.UsePrimitiveCombination && !GlobalVariables.NonCyclicNetworks)
             {
                 return NEW_GenerateCyclicCheckingNetwork(methodsList);
@@ -34,10 +42,6 @@ namespace SimpleRoslynAnalysis
             // used to register what was assigned to prevent double assignments
             // in this loop we create netwroks not only one, but they are all stored in here
             // also we complete missing code snippets        
-
-            int methodsWithChallengeCodeCount = methodsList.Where(m => m.HasChallengeCode).Count();
-            int fullNetworks = methodsWithChallengeCodeCount / GlobalVariables.NODES_NETWORK;
-            int nodesInPartialNetworks = methodsWithChallengeCodeCount % GlobalVariables.NODES_NETWORK;
 
             int currentStartIndex = 0;
             int currentEndIndex = GlobalVariables.NODES_NETWORK;
@@ -168,11 +172,6 @@ namespace SimpleRoslynAnalysis
         private static Dictionary<String, Method> GenerateNonCyclicCheckingNetworks(List<Method> methodsList)
         {
             Dictionary<String, Method> checkingNetwork = new Dictionary<String, Method>();
-
-            //network consists of:
-            int methodsWithChallengeCodeCount = methodsList.Where(m => m.HasChallengeCode).Count();
-            int fullNetworks = methodsWithChallengeCodeCount / (GlobalVariables.NODES_NETWORK - 1);
-            int nodesInPartialNetworks = methodsWithChallengeCodeCount % (GlobalVariables.NODES_NETWORK - 1);
 
             int currentStartIndex = 0;
             int currentEndIndex = GlobalVariables.NODES_NETWORK;
