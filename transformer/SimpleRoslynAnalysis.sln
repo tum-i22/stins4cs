@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SimpleRoslynAnalysis", "Sim
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PatternMatching", "..\PatternMatching\PatternMatching.csproj", "{15B5ADC6-2622-42FA-9F9D-A97B1C4972EB}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestRoslynParsing", "..\TestRoslynParsing\TestRoslynParsing.csproj", "{75F89319-02E0-42BA-AC31-CD64982D06CF}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,19 +23,12 @@ Global
 		{15B5ADC6-2622-42FA-9F9D-A97B1C4972EB}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{15B5ADC6-2622-42FA-9F9D-A97B1C4972EB}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{15B5ADC6-2622-42FA-9F9D-A97B1C4972EB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{75F89319-02E0-42BA-AC31-CD64982D06CF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{75F89319-02E0-42BA-AC31-CD64982D06CF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{75F89319-02E0-42BA-AC31-CD64982D06CF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{75F89319-02E0-42BA-AC31-CD64982D06CF}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
-	EndGlobalSection
-	GlobalSection(TeamFoundationVersionControl) = preSolution
-		SccNumberOfProjects = 3
-		SccEnterpriseProvider = {4CA58AB2-18FA-4F8D-95D4-32DDF27D184C}
-		SccTeamFoundationServer = https://grimsmiler.visualstudio.com/defaultcollection
-		SccLocalPath0 = .
-		SccProjectUniqueName1 = ..\\PatternMatching\\PatternMatching.csproj
-		SccProjectName1 = ../PatternMatching
-		SccLocalPath1 = ..\\PatternMatching
-		SccProjectUniqueName2 = SimpleRoslynAnalysis.csproj
-		SccLocalPath2 = .
 	EndGlobalSection
 EndGlobal
