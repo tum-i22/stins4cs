@@ -53,6 +53,13 @@ namespace SimpleRoslynAnalysis
                 Console.WriteLine(entry.Key +"-->"+ entry.Value);
             }
         }
+
+        public static T GetRandom<T>(this List<T> list)
+        {
+            
+            int r = GlobalVariables.Random.Next(list.Count);
+            return list[r];
+        }
     }
 
 }

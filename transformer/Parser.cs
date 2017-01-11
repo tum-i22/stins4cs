@@ -1,6 +1,7 @@
 ﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using SimpleRoslynAnalysis.Properties;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -20,8 +21,8 @@ namespace SimpleRoslynAnalysis
         public List<Exploration> parseReport()
         {
 
-            XElement xelement = XElement.Load((string)Properties.Settings.Default["Pex_Report_Path"]);
-            bool useStackInspection = (bool)Properties.Settings.Default["UseStackInspection"];
+            XElement xelement = XElement.Load(GlobalVariables.PexReportPath);
+            bool useStackInspection = GlobalVariables.UseStackInspection;
     
             IEnumerable<XElement> explorations = from exploration in xelement.Descendants("exploration")
                                                  select exploration;
@@ -82,7 +83,7 @@ namespace SimpleRoslynAnalysis
 
                 if (code == null)
                 {
-                    Console.WriteLine("No passing test for function " + explorationObject.getFullName());
+                    Console.WriteLine("No passing test for function " + explorationObject.FullFunctionName);
                     continue;
 
                 }
@@ -128,7 +129,7 @@ namespace SimpleRoslynAnalysis
                       Assert.IsNotNull((object)program);
                     }     
                 **/
-                Console.WriteLine("one passing exploration in report for " + explorationObject.getFullName());
+                Console.WriteLine("one passing exploration in report for " + explorationObject.FullFunctionName);
                 List<string> codeStatements = codeStr.Split(new string[] { "\n" }, StringSplitOptions.RemoveEmptyEntries).ToList();
 
                 string variableName = "s0"; // normally its s0 unless we are in the special case of using
@@ -215,7 +216,7 @@ namespace SimpleRoslynAnalysis
                                 { // this target instance creation
                                     int eqIndex = codeLine.IndexOf("=");
 
-                                    codeLine = codeLine.Substring(0, eqIndex + 1) + " " + (string)Properties.Settings.Default["Factory_Class_Name"] + ".Create" + explorationObject.ClassName + "();";
+                                    codeLine = codeLine.Substring(0, eqIndex + 1) + " " + GlobalVariables.FactoryClassName + ".Create" + explorationObject.ClassName + "();";
                                     classesForFactory.Add(new Class(explorationObject.ClassName, explorationObject.NameSpace));
                                     codeStatements[i] = codeLine;
                                     break;
@@ -259,9 +260,9 @@ namespace SimpleRoslynAnalysis
                     if (!(codeLine.Trim().Count() == 0))
                     {
 
-                        if (Transformer.primitveTypes.Any(str => codeLine.Trim().StartsWith(str)))// this is a primitive declaration
+                        if (Types.primitiveTypes.Any(str => codeLine.Trim().StartsWith(str)))// this is a primitive declaration
                         {
-                            if ((Transformer.responseScndOption == Transformer.RESPONSE_CODE_2 || Transformer.responseFirstOption == Transformer.RESPONSE_CODE_2) && Transformer.UsePrimitiveCombination)
+                            if ((ResponceCodes.ResponseSecondOption == ResponceCodes.RESPONSE_CODE_2 || ResponceCodes.ResponseFirstOption == ResponceCodes.RESPONSE_CODE_2) && GlobalVariables.UsePrimitiveCombination)
                             { // we have primitive declration, we have the one of the options to crash and the option is enabled
                               // then we will be moving this declration even if it was not used in the primitive combination
 
@@ -296,7 +297,7 @@ namespace SimpleRoslynAnalysis
 
                         if (codeLine.Contains("Assert."))// this is the check statement
                         {
-                            codeLine = HandleAsserStatement(codeLine,codeStatements);   
+                            codeLine = HandleAssertStatement(codeLine,codeStatements);   
                         }
 
                         
@@ -320,7 +321,7 @@ namespace SimpleRoslynAnalysis
 
                 if (useStackInspection)// added this setting to test the code without the if statement against pattern matching
                 {
-                    transformedCode.Insert(0, "if(!System.Environment.StackTrace.Contains(\"" + explorationObject.getFullName() + "\"))\n{\n");
+                    transformedCode.Insert(0, "if(!System.Environment.StackTrace.Contains(\"" + explorationObject.FullFunctionName + "\"))\n{\n");
                 }
                 //else {
                 //    transformedCode.Insert(0, "if(!Environment.StackTrace.Contains(\"" + explorationObject.getFullName() + "\"))\n{\n");
@@ -337,7 +338,7 @@ namespace SimpleRoslynAnalysis
 
                 //if contains s0 - definition of variable used to test (?!)
 
-                explorationObject.ChallangeCode = transformedCode.ToString();
+                explorationObject.ChallengeCode = transformedCode.ToString();
 
                 //Console.WriteLine("trans" + transformedCode.ToString());
 
@@ -352,7 +353,7 @@ namespace SimpleRoslynAnalysis
 
         }
 
-        private string HandleAsserStatement(string codeLine, List<string> codeStatements)
+        private string HandleAssertStatement(string codeLine, List<string> codeStatements)
         {
             if (codeLine.Contains("AreEqual"))// this is a comparison for the type functions; 
                                               //Assert.AreEqual<string>("01-Jan-01 12:00:00 AM", s);
@@ -410,7 +411,7 @@ namespace SimpleRoslynAnalysis
 
                 if (functionName != null)
                 {
-                    Regex regex = new Regex("[0-9]+");
+                    Regex regex = new Regex("[0-9]+$");
                     Match match = regex.Match(functionName.ToFullString());
                     if (match.Value != "")
                     {

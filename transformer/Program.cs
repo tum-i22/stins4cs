@@ -13,63 +13,18 @@ using System.IO;
 using Microsoft.CodeAnalysis.CSharp.Formatting;
 using Microsoft.CodeAnalysis.Formatting;
 
-
-
 namespace SimpleRoslynAnalysis
 {
     class Transformer
     {
-        private static string ResponseCode = (string) Properties.Settings.Default["Response_Code"];
-        private static string FactoryName = (string)Properties.Settings.Default["Factory_Class_Name"];
-        public static bool UsePrimitiveCombination = (bool)Properties.Settings.Default["UseprimitiveCombination"];
-        //"REMOTE_LOG 50, DELAYED_CRASH 50";
-        //"CRASH 100,DO_NOTHONG 40";
-        //, DELAYED_CRASH 0,REMOTE_LOG 0";
-        public static int NODES_NETWORK = (int)Properties.Settings.Default["NodeS_Network"];
-        public static int delayed_crash_upper_bound = (int)Properties.Settings.Default["Delayed_Crash_Upper_Bound_Sec"];
-        public static int boolCastMode = (int)Properties.Settings.Default["BoolCastMode"];
-        public static string log_message = "\"" + (string)Properties.Settings.Default["Log_Message"] + "\"";
-        public static string ignore_transform = (string)Properties.Settings.Default["Ignore_Annotation"];
-
-        public const string RESPONSE_CODE_1 = "DO_NOTHONG";
-        public const string RESPONSE_CODE_2 = "CRASH";
-        public const string RESPONSE_CODE_3 = "DELAYED_CRASH";
-        public const string RESPONSE_CODE_4 = "REMOTE_LOG";
-
-
-
-        private static string RESPONSE_CODE_1_SOURCE = " ";
-        private static string RESPONSE_CODE_2_SOURCE = " System.Environment.Exit(0); ";
-        private static string RESPONSE_CODE_3_SOURCE = @" Random r = new Random();
-            System.Timers.Timer aTimer = new System.Timers.Timer(r.Next(1," + delayed_crash_upper_bound + @")*1000);
-            aTimer.Elapsed += (sender, e) => {
-                System.Environment.Exit(0);
-            }; 
-            aTimer.Enabled = true;";
-
-        private static string RESPONSE_CODE_4_SOURCE = @"log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType).Fatal(" + log_message + ");";
-
-
-        // we may have up to two response optins
-        public static string responseFirstOption = "";
-        public static string responseScndOption = "";
-        // this will be the index of where not to continue using the first option
-        private static int responseSwitchIndex;
-        public static List<string> primitveTypes = new List<string>()
-        {"byte","sbyte","int","uint","short","ushort","long","ulong","float","double","char","bool","string","decimal"};
-        public static List<string> numericPrimitveTypes = new List<string>()
-        {"byte","sbyte","int","uint","short","ushort","long","ulong","float","double","decimal"};
-
-        private static Random rand = new Random();
-
         public static void Main(string[] args)
         {
 
 
             // .sln path could contain more than one project
-            string pathToSolution = (string)Properties.Settings.Default["Path_To_Solution"];
+            string pathToSolution = GlobalVariables.PathToSolution;
             //const string pathToSolution = @"C:\Users\IBM\Desktop\roslyn\roslyn-master\roslyn-master\src\Samples\Samples.sln";
-            string projectName = (string)Properties.Settings.Default["Project_Name"];
+            string projectName = GlobalVariables.ProjectName;
 
             // start Roslyn workspace
             MSBuildWorkspace workspace = MSBuildWorkspace.Create();
@@ -167,7 +122,7 @@ namespace SimpleRoslynAnalysis
                         // do not add methods that should be ignored in transformation to the list
                         //Console.WriteLine(methodObject.Comment);
 
-                        if (!methodObject.Comment.Contains(ignore_transform) && methodObject.Visibility.Trim().ToLower() == "public")
+                        if (!methodObject.Comment.Contains(GlobalVariables.ignore_transform) && methodObject.Visibility.Trim().ToLower() == "public")
                         {
                             methodsList.Add(methodObject);
                         }
@@ -178,7 +133,7 @@ namespace SimpleRoslynAnalysis
 
             }// done looping the documents
             Console.WriteLine("Number of methods in the first list " + methodsList.Count());
-            setResponseSettings(ResponseCode, methodsList.Count());
+            ResponceCodes.SetResponseSettings(GlobalVariables.ResponseCode, methodsList.Count());
             // start of phase two:
             // step 2 
             // parse the pex report 
@@ -188,25 +143,24 @@ namespace SimpleRoslynAnalysis
 
             // loop methods and add the challanges to it 
             // this maybe can be better optimized by doing this loop within other loops maybe the main loop of reading the code or the network generation loop
-            int passingTestsCount = 0;
             foreach (Exploration exp in explorations)
             {
                 //Console.WriteLine(exp.getFullName());
-                Method result = methodsList.FirstOrDefault(s => s.Id == exp.getFullName());
+                Method result = methodsList.FirstOrDefault(s => s.Id == exp.FullFunctionName);
                 // this can be null when the method is not in the list (ignored for instance)
                 if (result != null)
                 {
-                    passingTestsCount++;
-                    result.ChallangeCode = exp.ChallangeCode;
+                    result.ChallengeCode = exp.ChallengeCode;
                     result.ResultValue = exp.ResultValue;
                     result.variableName = exp.variableName;
-
                 }
-
-
             }
 
-            Console.WriteLine("total Number of methods with explorations found " + explorations.Count() + " merged with methods " + passingTestsCount);
+            var funtionsWithTests = methodsList.Where(s => explorations.Where(e => e.FullFunctionName == s.Id).FirstOrDefault() != null).ToList();
+
+            var explorationsWithTests = explorations.Where(e => methodsList.Where(s => s.Id == e.FullFunctionName).FirstOrDefault() != null).ToList();
+
+            Console.WriteLine("total Number of methods with explorations found " + explorations.Count() + " merged with methods " + funtionsWithTests.Count);
 
             // 2.1- shuffle the list of methods
             // can use shuffle or shuffle 2
@@ -215,110 +169,9 @@ namespace SimpleRoslynAnalysis
             // dictonary the key is the checking function name and the value is the checked one 
             // value cannot be a void method??
 
-
-            Dictionary<String, Method> checkingNetwork = new Dictionary<String, Method>();
-            // used to register what was assigned to prevent double assignments
-            // in this loop we create netwroks not only one, but they are all stored in here
-            // also we complete missing code snippets        
-            int startIndex = 0;
-            for (int i = 0; i < methodsList.Count; i++)
-            {
-                if (i % NODES_NETWORK == 0)
-                {
-                    startIndex = i;
-                }
-                // a round robin relation
-                Method checkingMethod = methodsList[i];
-                Method checkedMethod = null;
-                // will leave ignoring voids for later stage
-
-                // last item in a netwrok, or last item at all
-                //  think about edge cases in here, one item left in a network or 2 ..etc
-                if ((i % NODES_NETWORK) == NODES_NETWORK - 1 || (i == methodsList.Count - 1))
-                {
-                    // last item in smaller networ, points to first item in smaller network
-                    if (startIndex != i)// cases of one item is not added
-                        checkedMethod = methodsList[startIndex];
-                }
-                // normal round robin
-                else
-                {
-                    // this is not the last item in smaller network
-                    checkedMethod = methodsList[i + 1];
-                }
-
-                // replace the name of the checking function in the checking code now.
-                // add the response mechanisim
-                if (checkedMethod != null)
-                {
-                    string value = checkedMethod.ChallangeCode;
-                    if (value != null)
-                    {
-
-                        // put the second option if there
-                        if (i > responseSwitchIndex && responseScndOption != "")
-                        {
-                            if (responseScndOption == RESPONSE_CODE_2 && UsePrimitiveCombination)
-                            { // for crash we can use the primitive combination if parent and child are primitives
-
-                                //Console.WriteLine(checkedMethod.ReturnType + checkingMethod.ReturnType);
-                                if (isPrimitive(checkedMethod.ReturnType) && isPrimitive(checkingMethod.ReturnType))
-                                {// both primitve functions
-                                    checkedMethod.PrimitiveCombination = true;
-                                    value = removeResponsePart(value);
-                                    checkedMethod = createReturnStatement(checkedMethod, checkingMethod);
-
-                                }
-                                else
-                                {
-                                    value = value.Replace("RESPONSE", getResponse(1, checkedMethod.Id));
-                                }
-                            }
-                            else// regular scnd option
-                            {
-                                value = value.Replace("RESPONSE", getResponse(1, checkedMethod.Id));
-                            }
-
-
-                        }
-                        else // first option
-                        {
-                            if (responseFirstOption == RESPONSE_CODE_2 && UsePrimitiveCombination)
-                            { // for crash we can use the primitive combination
-
-                                if (isPrimitive(checkedMethod.ReturnType) && isPrimitive(checkingMethod.ReturnType))
-                                {// both primitve functions
-                                 //String returnSyntax = createReturnSyntax(checkedMethod, chec)
-                                    checkedMethod.PrimitiveCombination = true;
-                                    value = removeResponsePart(value);
-                                    checkedMethod = createReturnStatement(checkedMethod, checkingMethod);
-                                }
-                                else
-                                {
-                                    value = value.Replace("RESPONSE", getResponse(0, checkedMethod.Id));
-                                }
-                            }
-                            else
-                            {
-                                value = value.Replace("RESPONSE", getResponse(0, checkedMethod.Id));
-                            }
-                        }
-
-
-                        checkedMethod.ChallangeCode = value;
-                    }
-                    //Console.WriteLine("adding id "+checkingMethod.Id);
-                    //todo there are cases of same function id in overloading
-                    checkingNetwork[checkingMethod.Id] = checkedMethod;
-                }
-
-
-
-            }// end of for
-
-
-
-
+            //NETWORK GENERATION!!!
+            var checkingNetwork = NetworkGenerator.GenerateCheckingNetwork(methodsList);
+            
             //methodsList.Print();
             Console.WriteLine("Netwrork of all methods");
             checkingNetwork.Print();
@@ -415,7 +268,7 @@ namespace SimpleRoslynAnalysis
                 root = Formatter.Format(root, workspace, options);
                 string fileContent = UsingList.AddUsingListToOfFile(disablePragmaWarningCS0618(root.ToFullString()));
                 // sampleProjectToAnalyze.Documents.Where( doc => doc.)
-                string augmentedDocSaveDir = String.Format("{0}{1}", (string)Properties.Settings.Default["Output_Dir"], GenerateDocumentFolderPath(document.Folders));
+                string augmentedDocSaveDir = String.Format("{0}{1}", GlobalVariables.OutputDirectory, GenerateDocumentFolderPath(document.Folders));
                 string augmentedDocSavePath = String.Format("{0}{1}", augmentedDocSaveDir, document.Name);
                 Directory.CreateDirectory(augmentedDocSaveDir);
                 File.WriteAllText(augmentedDocSavePath, fileContent);
@@ -423,7 +276,7 @@ namespace SimpleRoslynAnalysis
 
             // add the factory class
             CompilationUnitSyntax factoryClass = InsertFactoryClass(Parser.classesForFactory);
-            File.WriteAllText((string)Properties.Settings.Default["Output_Dir"] + FactoryName + ".cs", factoryClass.ToFullString());
+            File.WriteAllText(GlobalVariables.OutputDirectory + GlobalVariables.FactoryName + ".cs", factoryClass.ToFullString());
 
         }
 
@@ -438,222 +291,19 @@ namespace SimpleRoslynAnalysis
             return path;
         }
 
-        private static Method createReturnStatement(Method child, Method parent)
-        { // this method will work based on the 16 cases of combination that are in the design
-
-            string parentReturntype = parent.ReturnType;
-            string childReturnType = child.ReturnType;
-            string operand = "";
-            string returnStatement = "";
-            if (isNumeric(parentReturntype) || parentReturntype.Trim().ToLower() == "char")
-            { // cases 1-4 and 9-12
-                operand = " + ";
-                if (isNumeric(childReturnType) || childReturnType.Trim().ToLower() == "char")
-                { // case 1, 3 return res + (expected - actual)
-                    returnStatement = createNumericExpression(child.variableName, child.ResultValue);
-                }
-                else if (childReturnType.Trim().ToLower() == "bool")
-                { // case 2 res+ (int) (exp xor actual)
-                    returnStatement = createXorExpression(child.variableName, child.ResultValue, true);
-                }
-                else if (childReturnType.Trim().ToLower() == "string")
-                { // case 4 res+ (int) (exp != actual)
-                    returnStatement = createNagationLogicalExpression(child.variableName, child.ResultValue, true);
-                }
-
-
-                returnStatement = operand + returnStatement;
-            }// end of numeric parent
-            else if (parentReturntype.Trim() == "bool")
-            { // cases 5-8
-                operand = " ^ ";
-                if (isNumeric(childReturnType) || childReturnType.Trim().ToLower() == "bool" || childReturnType.Trim().ToLower() == "char" || childReturnType.Trim().ToLower() == "string")
-                { // case 5  6 7 8 return res && (expected == actual)
-                    returnStatement = createNagationLogicalExpression(child.variableName, child.ResultValue, false);
-                }
-                returnStatement = operand + returnStatement;
-            }// end of bool parent
-            if (parentReturntype.Trim().ToLower() == "string")
-            { // cases 13-16
-                operand = ".Substring($)";
-                if (isNumeric(childReturnType) || childReturnType.Trim().ToLower() == "char")
-                { // case 14, 16 return res.Substring(act-exp)
-                    returnStatement = operand.Replace("$", createNumericExpression(child.variableName, child.ResultValue));
-
-                }
-                else if (childReturnType.Trim().ToLower() == "bool")
-                { // case 15 return res.Substring(act-exp)
-                    returnStatement = operand.Replace("$", createXorExpression(child.variableName, child.ResultValue, true));
-                }
-                else if (childReturnType.Trim().ToLower() == "string")
-                { // case 16 return res.Substring(act-exp)
-                    returnStatement = operand.Replace("$", createNagationLogicalExpression(child.variableName, child.ResultValue, true));
-                }
-
-            }
-
-
-            //Console.WriteLine(child.variableName + "==" + parent.ReturnType + "--" + child.ReturnType + "---" + returnStatement);
-
-
-            child.CombinedReturnStatement = returnStatement;
-            return child;
-        }
-
-        private static string createNumericExpression(string variableName, string resultValue)
-        {
-            // this method will create the expressions like (expected - actual) 
-
-            return " (int)(" + variableName + " - " + resultValue + ")";
-        }
-
-
-
-
-
-        private static string createNagationLogicalExpression(string variableName, string resultValue, bool castToInt)
-        {
-            // this method will create the expressions like (expected==actual)
-            
-            if (castToInt)
-            {      //  depending on the setting BoolCastMode:
-                // 1: inline if
-                // 2: Convert.ToInt32
-                // other: choose randomly 
-
-                if (boolCastMode == 1)
-                {
-                    return "((" + variableName + " != " + resultValue + ")" + "? 1 : 0)";
-                }
-                else if (boolCastMode == 2)
-                {
-                    return " Convert.ToInt32(" + variableName + " != " + resultValue + ")";
-                }
-                else
-                {
-                    if ((rand.Next(1, 1000) % 2) == 0)
-                        return " Convert.ToInt32(" + variableName + " != " + resultValue + ")";
-                    else
-                        return "((" + variableName + " != " + resultValue + ")" + "? 1 : 0)";
-                }
-            }
-            return "(" + variableName + " != " + resultValue + ")";
-        }
-
-        private static string createXorExpression(string variableName, string resultValue, bool castToInt)
-        {
-            // this method will create the expressions like int (expected^actual)
-            if (castToInt)
-            {
-                // choose randomly 
-                //if ((rand.Next(1, 1000) % 2) == 0)
-                    return " Convert.ToInt32(" + variableName + " ^ " + resultValue + ")";
-               // else
-               //     return "((" + variableName + " ^ " + resultValue + ")" + "? 1 : 0)";
-            }
-
-            return "(" + variableName + " ^ " + resultValue + ")";
-        }
-
-        private static bool isNumeric(string parentReturntype)
-        {
-            return (numericPrimitveTypes.Contains(parentReturntype.Trim().ToLower()));
-
-        }
-
-        private static string removeResponsePart(string value)
-        {
-            // for primitive combination we need to remove the response part
-            //if (!Environment.StackTrace.Contains("ConsoleApplication1.Program.isGood"))
-            //{
-            //    Program program;
-            //    program = ClassFactory.CreateProgram();
-            //    b = program.isGood();
-
-            //   --> if (false != b) { RESPONSE }<--
-
-            //}
-
-            int lastSemiColonIndex = value.LastIndexOf(';');
-            value = value.Substring(0, lastSemiColonIndex + 1) + "\n}";
-
-
-
-            return value;
-        }
-
-        // returns the code statemenet of the response
-        private static string getResponse(int i, String methodName)
-        {
-            string responseType = (i == 0) ? responseFirstOption : responseScndOption;
-            string response;
-            switch (responseType)
-            {
-                case RESPONSE_CODE_1:
-                    response = RESPONSE_CODE_1_SOURCE;
-                    break;
-                case RESPONSE_CODE_2:
-                    response = RESPONSE_CODE_2_SOURCE;
-                    break;
-                case RESPONSE_CODE_3:
-                    response = RESPONSE_CODE_3_SOURCE;
-                    break;
-                case RESPONSE_CODE_4:
-                    response = RESPONSE_CODE_4_SOURCE.Replace("$", methodName);
-                    break;
-                default:
-                    response = RESPONSE_CODE_1_SOURCE;
-                    break;
-            }
-
-            return response;
-
-        }
-
-
-        // this method will read the response code by the user,
-        // and will set the needed data for that based on user selection
-        private static void setResponseSettings(string responseCode, int methodsCount)
-        {
-            // we have DO_NOTHING CRASH DELAYED_CRASH REMOTE_LOG
-            // we can combine  DO_NOTHONG 80,CRASH 20; 80,20 /100 comma seperated 
-            string[] options = responseCode.Split(',');
-            for (int i = 0; i < options.Count(); i++)
-            {
-                // now split the wieght from the action
-                // no cross validation of the weight will be done (no 20+80== 100) 
-                string[] optionSettings = options[i].Split(' '); // second is the weight
-                if (i == 0)
-                {
-                    responseFirstOption = optionSettings[0];
-                    double weight = double.Parse(optionSettings[1]);
-                    responseSwitchIndex = (int)((weight / 100) * methodsCount);
-                }
-                else
-                {
-                    responseScndOption = optionSettings[0];
-                }
-            }
-
-            //Console.WriteLine(responseFirstOption + "---" + responseScndOption + "---" + responseSwitchIndex);
-        }
-
-
-
-
 
         public static MethodDeclarationSyntax InsertCheck(MethodDeclarationSyntax currMethod, Method checkedMethod)
         {
 
             //TODO decide in case of empty
-            //Console.WriteLine(checkedMethod.ChallangeCode);
-            if (checkedMethod.ChallangeCode == null || (checkedMethod.ChallangeCode.Length == 0))
+            //Console.WriteLine(checkedMethod.ChallengeCode);
+            if (checkedMethod.ChallengeCode == null || (checkedMethod.ChallengeCode.Length == 0))
             {
                 return currMethod;
-                //checkedMethod.ChallangeCode = "// testing empty";
+                //checkedMethod.ChallengeCode = "// testing empty";
             }
 
-            var checkText = checkedMethod.ChallangeCode;
+            var checkText = checkedMethod.ChallengeCode;
             string aLine = null;
             // create and fill statement list 
             List<StatementSyntax> statements = new List<StatementSyntax>();
@@ -712,7 +362,6 @@ namespace SimpleRoslynAnalysis
                             result += " " + parts[i];
                         }
                         newReturnStr = result;
-
                     }
 
                     newReturnStr += ";";
@@ -722,7 +371,6 @@ namespace SimpleRoslynAnalysis
                 }
                 if (dict.Any())
                 {
-
                     // replace the methods and write the checks
                     newMethod = newMethod.ReplaceNodes(dict.Keys, (n1, n2) => dict[n1]).NormalizeWhitespace();
                 }
@@ -736,7 +384,7 @@ namespace SimpleRoslynAnalysis
 
         public static CompilationUnitSyntax InsertFactoryClass(HashSet<Class> classesForFactory)
         {
-            var tree = SyntaxFactory.ParseSyntaxTree(@"class " + FactoryName + @"
+            var tree = SyntaxFactory.ParseSyntaxTree(@"class " + GlobalVariables.FactoryName + @"
 {
 }");
             var compilationUnit = (CompilationUnitSyntax)tree.GetRoot();
@@ -760,8 +408,6 @@ namespace SimpleRoslynAnalysis
                 i++;
             }
 
-
-
             // Add this new MethodDeclarationSyntax to the above ClassDeclarationSyntax.
             ClassDeclarationSyntax newClassDeclaration =
                 classDeclaration.AddMembers(methods);
@@ -773,12 +419,6 @@ namespace SimpleRoslynAnalysis
             // normalize the whitespace
             newCompilationUnit = newCompilationUnit.NormalizeWhitespace("    ");
             return newCompilationUnit;
-
-        }
-
-        private static bool isPrimitive(String type)
-        {
-            return (primitveTypes.Contains(type.Trim().ToLower()));
 
         }
 

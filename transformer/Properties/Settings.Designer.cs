@@ -139,5 +139,14 @@ namespace SimpleRoslynAnalysis.Properties {
                 return ((bool)(this["UseStackInspection"]));
             }
         }
+        
+        [global::System.Configuration.ApplicationScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool NonCyclicNetwork {
+            get {
+                return ((bool)(this["NonCyclicNetwork"]));
+            }
+        }
     }
 }
