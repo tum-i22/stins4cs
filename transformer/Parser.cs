@@ -461,7 +461,17 @@ namespace SimpleRoslynAnalysis
 
                 if (functionName != null)
                 {
-                    Regex regex = new Regex("[0-9]+$");
+                    Regex regex;
+                    if (functionName.ToFullString().Contains("<") && functionName.ToFullString().Contains(">"))
+                    {
+                        regex = new Regex("[0-9]+(?=<)");
+
+                    }
+                    else
+                    {
+                        regex = new Regex("[0-9]+$");
+                    }
+
                     Match match = regex.Match(functionName.ToFullString());
                     if (match.Value != "")
                     {
