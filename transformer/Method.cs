@@ -20,6 +20,8 @@ namespace SimpleRoslynAnalysis.Model
 
         public String Comment { get; set; }
 
+        public List<string> Usings { get; set; }
+
 
         // the expecte value
         public String ResultValue { get; set; }

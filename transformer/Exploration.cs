@@ -19,6 +19,8 @@ namespace SimpleRoslynAnalysis
         public String variableName { get; set; }
         public String ChallengeCode { get; set; }
 
+        public List<string>Usings { get; set; }
+
         public bool IsStaticClass { get; set; }
 
         public Exploration()

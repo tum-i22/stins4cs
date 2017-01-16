@@ -61,7 +61,6 @@ namespace SimpleRoslynAnalysis
                 
                 IEnumerable<XElement> generatedTests = exploration.Elements("generatedTest");
 
-
                 XElement code = null;
                 // loop backward to store the last working test
                 if (generatedTests.Any())
@@ -69,7 +68,8 @@ namespace SimpleRoslynAnalysis
                     for (int i = generatedTests.Count() - 1; i >= 0; i--)
                     {
                         var item = generatedTests.ElementAt(i);
-                        if (item != null)
+                        //var failedTest = item.Attributes().Where(a => a.Name == "failed").FirstOrDefault() != null ? true : false;
+                        if (item != null )//&& !failedTest)
                         {
                             if (item.Attribute("status").Value == "normaltermination")
                             {
@@ -81,11 +81,11 @@ namespace SimpleRoslynAnalysis
                     }
                 }
 
-                if (code == null)
+                //if starts with /* -> comment -> ignore (maybe the test case is fucked up)
+                if (code == null || (code != null && code.Element("code").Value.StartsWith("/*")) )
                 {
                     Console.WriteLine("No passing test for function " + explorationObject.FullFunctionName);
                     continue;
-
                 }
 
                 string status = code.Attribute("status").Value;
@@ -93,9 +93,24 @@ namespace SimpleRoslynAnalysis
                 string declarationStatement = "";
                 string result = "NOT-SET";
 
-                // ignore the failing tests
+                // (!!!) ignore the failing tests
                 if (status != "normaltermination")
                     continue;
+
+                if(code.Element("methodCode") != null)
+                {
+                    var methodCode = code.Element("methodCode");
+                    if(methodCode.Attribute("imports") != null)
+                    {
+                        var imports = methodCode.Attribute("imports").Value.Split(new char[] { ';' }).ToList();
+                        imports.Remove("Microsoft.VisualStudio.TestTools.UnitTesting");
+                        imports.Remove("Microsoft.Pex.Framework.Generated");
+                        imports.Remove("Microsoft.Pex.Framework");
+
+                        explorationObject.Usings = imports;
+                    }
+                }
+
                 String codeStr = code.Element("code").Value;
                 IEnumerable<XElement> values = code.Elements("value");
 
@@ -151,27 +166,9 @@ namespace SimpleRoslynAnalysis
                                 remove first and last lines
                 */
 
-                if(codeStatements[0].Contains("using") && codeStatements[0].Contains("PexDisposableContext"))
-                {
-                    //muust get PexDisposableContext var and delete any mention of it in the method
-                    var usingVarDeclSyntx = SyntaxFactory.ParseStatement(codeStatements[0]).DescendantNodes().OfType<VariableDeclarationSyntax>().FirstOrDefault();
 
-                    //assume we have only 1 delcaration in the using statement
-                    var varNameIdentifiers = usingVarDeclSyntx.Variables[0].Identifier.Value.ToString();// usingVarDeclSyntx.Variables;
-
-                    //remove "using (PexDisposableContext <varName> = PexDisposableContext.Create())"
-                    codeStatements.RemoveAt(0);
-                    //remove {
-                    codeStatements.RemoveAt(0);
-                    //remove }
-                    codeStatements.RemoveAt(codeStatements.Count-1);
-
-                    var codeLinesToDelete = codeStatements.Where(codeline => codeline.Contains(varNameIdentifiers)).ToList();
-                    foreach(var line in codeLinesToDelete)
-                    {
-                        codeStatements.Remove(line);
-                    }
-                }
+                //remove cases with "using (Pex...whatever) { ... }
+                codeStatements = RemovePexUsingStuff(codeStatements);
 
                 //if method call is several lines long, get it all together.
                 for (int i = 0; i < codeStatements.Count; i++)
@@ -351,6 +348,59 @@ namespace SimpleRoslynAnalysis
 
             return explorationList;
 
+        }
+
+        private List<string> RemovePexUsingStuff(List<string> codeStatements)
+        {
+            while (codeStatements[0].Contains("using") && codeStatements[0].Contains("Pex"))
+            {
+                if (codeStatements[0].Contains("PexDisposableContext"))
+                {
+                    codeStatements = RemovePexUsingDisposableContent(codeStatements);
+                }
+                else if (codeStatements[0].Contains("/*"))
+                {
+                    var it = 12;
+                }
+                else
+                {
+                    //remove "using (Pex ... )"
+                    codeStatements.RemoveAt(0);
+                    //remove {
+                    codeStatements.RemoveAt(0);
+                    //remove }
+                    codeStatements.RemoveAt(codeStatements.Count - 1);
+                }
+            }
+
+            return codeStatements;
+        }
+
+        private List<string> RemovePexUsingDisposableContent(List<string> codeStatements)
+        {
+            if (codeStatements[0].Contains("using") && codeStatements[0].Contains("PexDisposableContext"))
+            {
+                //muust get PexDisposableContext var and delete any mention of it in the method
+                var usingVarDeclSyntx = SyntaxFactory.ParseStatement(codeStatements[0]).DescendantNodes().OfType<VariableDeclarationSyntax>().FirstOrDefault();
+
+                //assume we have only 1 delcaration in the using statement
+                var varNameIdentifiers = usingVarDeclSyntx.Variables[0].Identifier.Value.ToString();// usingVarDeclSyntx.Variables;
+
+                //remove "using (PexDisposableContext <varName> = PexDisposableContext.Create())"
+                codeStatements.RemoveAt(0);
+                //remove {
+                codeStatements.RemoveAt(0);
+                //remove }
+                codeStatements.RemoveAt(codeStatements.Count - 1);
+
+                var codeLinesToDelete = codeStatements.Where(codeline => codeline.Contains(varNameIdentifiers)).ToList();
+                foreach (var line in codeLinesToDelete)
+                {
+                    codeStatements.Remove(line);
+                }
+            }
+
+            return codeStatements;
         }
 
         private string HandleAssertStatement(string codeLine, List<string> codeStatements)

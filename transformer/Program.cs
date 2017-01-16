@@ -153,6 +153,7 @@ namespace SimpleRoslynAnalysis
                     result.ChallengeCode = exp.ChallengeCode;
                     result.ResultValue = exp.ResultValue;
                     result.variableName = exp.variableName;
+                    result.Usings = exp.Usings;
                 }
             }
 
@@ -228,6 +229,10 @@ namespace SimpleRoslynAnalysis
                             }
 
                             usingsToAdd.Add(checkedMethod.getNameSpace());
+                            if(checkedMethod.Usings != null)
+                            {
+                                usingsToAdd.UnionWith(checkedMethod.Usings);
+                            }                            
                         }
                     }
 
@@ -266,7 +271,7 @@ namespace SimpleRoslynAnalysis
                 //Formatter.
                 // Format the document.
                 root = Formatter.Format(root, workspace, options);
-                string fileContent = UsingList.AddUsingListToOfFile(disablePragmaWarningCS0618(root.ToFullString()));
+                string fileContent = disablePragmaWarningCS0618(root.ToFullString());
                 // sampleProjectToAnalyze.Documents.Where( doc => doc.)
                 string augmentedDocSaveDir = String.Format("{0}{1}", GlobalVariables.OutputDirectory, GenerateDocumentFolderPath(document.Folders));
                 string augmentedDocSavePath = String.Format("{0}{1}", augmentedDocSaveDir, document.Name);
@@ -426,45 +431,6 @@ namespace SimpleRoslynAnalysis
         {
             string warningDisabler = "\n#pragma warning disable CS0618 // Type or member is obsolete";
             return warningDisabler + "\n" + fileContent;
-        }
-    }
-
-    public static class UsingList
-    {
-        private static List<string> _usingList = new List<string>();
-
-        public static void Add(UsingStatementSyntax uss)
-        {
-            _usingList.Add(uss.ToFullString());
-        }
-
-        public static string GetUsings()
-        {
-            string result = "";
-            foreach(var use in _usingList)
-            {
-                result += use + "\n";
-            }
-
-            return result;
-        }
-
-        public static string AddUsingListToOfFile(string fileContent)
-        {
-            string[] additionalUsings = { "using System.Collections;",
-                "using System.Text;",
-                "using System.Globalization;",
-                "using System.Collections.Generic;" };
-
-            foreach (var _using in additionalUsings)
-            {
-                if (!fileContent.Contains(_using))
-                {
-                    fileContent = _using + "\n" + fileContent;
-                }
-            }
-
-            return fileContent;
         }
     }
 }
