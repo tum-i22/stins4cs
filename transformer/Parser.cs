@@ -99,16 +99,7 @@ namespace SimpleRoslynAnalysis
 
                 if(code.Element("methodCode") != null)
                 {
-                    var methodCode = code.Element("methodCode");
-                    if(methodCode.Attribute("imports") != null)
-                    {
-                        var imports = methodCode.Attribute("imports").Value.Split(new char[] { ';' }).ToList();
-                        imports.Remove("Microsoft.VisualStudio.TestTools.UnitTesting");
-                        imports.Remove("Microsoft.Pex.Framework.Generated");
-                        imports.Remove("Microsoft.Pex.Framework");
-
-                        explorationObject.Usings = imports;
-                    }
+                    explorationObject = HandleUsings(code, explorationObject);
                 }
 
                 String codeStr = code.Element("code").Value;
@@ -350,6 +341,23 @@ namespace SimpleRoslynAnalysis
 
         }
 
+        private Exploration HandleUsings(XElement code, Exploration explorationObject)
+        {
+            var methodCode = code.Element("methodCode");
+            if (methodCode.Attribute("imports") != null)
+            {
+                var imports = methodCode.Attribute("imports").Value.Split(new char[] { ';' }).ToList();
+                imports.Remove("Microsoft.VisualStudio.TestTools.UnitTesting");
+                imports.Remove("Microsoft.Pex.Framework.Generated");
+                imports.Remove("Microsoft.Pex.Framework");
+                imports.Remove("Microsoft.ExtendedReflection.Metadata.Impl");
+
+                explorationObject.Usings = imports;
+            }
+
+            return explorationObject;
+        }
+
         private List<string> RemovePexUsingStuff(List<string> codeStatements)
         {
             while (codeStatements[0].Contains("using") && codeStatements[0].Contains("Pex"))
@@ -459,7 +467,9 @@ namespace SimpleRoslynAnalysis
                     functionName = memberAccessExpression.DescendantNodes().OfType<IdentifierNameSyntax>().LastOrDefault();
                 }
 
-                if (functionName != null)
+                var matches = Transformer.MethodList.Where(m => m.Id.Contains(functionName.ToFullString()));
+
+                if (functionName != null && matches.Count() == 0)
                 {
                     Regex regex;
                     if (functionName.ToFullString().Contains("<") && functionName.ToFullString().Contains(">"))
@@ -498,14 +508,35 @@ namespace SimpleRoslynAnalysis
 
         private string HandleThisStatement(string codeLine, string variableName, Exploration explorationObject)
         {
+            //if static class this.m() ->className.m() 
+            if (explorationObject.IsStaticClass)
+            {
+                return codeLine.Replace("this", explorationObject.FullClassName);
+            }
+
             var codeLineStatementCompontnets = SyntaxFactory.ParseStatement(codeLine).DescendantNodes();
             var isThisStatement = codeLineStatementCompontnets.OfType<ThisExpressionSyntax>().Count() > 0 ? true : false;
+
 
             var isAssignment = codeLineStatementCompontnets.OfType<AssignmentExpressionSyntax>().Count() > 0 ? true : false;
 
             if (isThisStatement)
             {
+                string funcName;
+
+                try
+                {
+                    funcName = SyntaxFactory.ParseStatement(codeLine).DescendantNodes().OfType<GenericNameSyntax>().FirstOrDefault().ToFullString();
+                }
+                //case when it is a get/set method
+                catch
+                {
+                    var temp1 = SyntaxFactory.ParseStatement(codeLine).DescendantNodes().OfType<MemberAccessExpressionSyntax>().FirstOrDefault();
+                    funcName = temp1.DescendantNodes().OfType<IdentifierNameSyntax>().FirstOrDefault().ToString();
+                }
+
                 var argumentLists = codeLineStatementCompontnets.OfType<ArgumentListSyntax>();
+
                 if (argumentLists.Count() > 0)
                 {
                     foreach (var argumentList in argumentLists)
@@ -524,52 +555,42 @@ namespace SimpleRoslynAnalysis
 
                             var firstVariable = argumentList.Arguments.FirstOrDefault().ToFullString();
 
-                            if (firstVariable == variableName || castIsFirstVar )
+                            //remove the first argument. leave the rest
+                            string funcArgs;
+                            if (argumentList.Arguments.Count > 1)
                             {
-                                //remove the first argument. leave the rest
-                                string funcArgs;
-                                if (argumentList.Arguments.Count > 1)
-                                {
-                                    funcArgs = argumentList.Arguments.ToString().Replace(firstVariable + ",", "");
-                                }
-                                else
-                                //empty funcArgs if the argument is only 1 arg
-                                {
-                                    funcArgs = "";
-                                }
+                                funcArgs = argumentList.Arguments.ToString().Replace(firstVariable + ",", "");
+                            }
+                            else
+                            //empty funcArgs if the argument is only 1 arg
+                            {
+                                funcArgs = "";
+                            }
 
-                                string funcName;
-
-                                try
+                            if (firstVariable == variableName)
+                            {
+                                codeLine = String.Format("{0}.{1}({2});", variableName, funcName, funcArgs);                                
+                            }
+                            else
+                            {
+                                if(castIsFirstVar)
                                 {
-                                    funcName = SyntaxFactory.ParseStatement(codeLine).DescendantNodes().OfType<GenericNameSyntax>().FirstOrDefault().ToFullString();
+                                    firstVariable = "(" + firstVariable + ")";
                                 }
-                                //case when it is a get/set method
-                                catch
-                                {
-                                    var temp1 = SyntaxFactory.ParseStatement(codeLine).DescendantNodes().OfType<MemberAccessExpressionSyntax>().FirstOrDefault();
-                                    funcName = temp1.DescendantNodes().OfType<IdentifierNameSyntax>().FirstOrDefault().ToString();
-                                }
+                                codeLine = String.Format("{0}.{1}({2});", firstVariable, funcName, funcArgs);
+                            }
 
-                                codeLine = String.Format("{0}.{1}({2});", variableName, funcName, funcArgs);
+                            if (isAssignment)
+                            {
+                                var assignmentExpression = codeLineStatementCompontnets.OfType<AssignmentExpressionSyntax>();
+                                var assignmentVar = assignmentExpression.ToList()[0].DescendantNodes().OfType<IdentifierNameSyntax>()
+                                    .ToList()[0].ToFullString();
+                                codeLine = String.Format("{0} = {1}", assignmentVar, codeLine);
 
-                                if (isAssignment)
-                                {
-                                    var assignmentExpression = codeLineStatementCompontnets.OfType<AssignmentExpressionSyntax>();
-                                    var assignmentVar = assignmentExpression.ToList()[0].DescendantNodes().OfType<IdentifierNameSyntax>()
-                                        .ToList()[0].ToFullString();
-                                    codeLine = String.Format("{0} = {1}", assignmentVar, codeLine);
-
-                                }
                             }
                         }
                     }
                 }
-            }
-            //if static class this.m() ->className.m() 
-            if (explorationObject.IsStaticClass)
-            {
-                codeLine = codeLine.Replace("this", explorationObject.FullClassName);
             }
 
             return codeLine;

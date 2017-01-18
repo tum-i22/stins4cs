@@ -17,10 +17,12 @@ namespace SimpleRoslynAnalysis
 {
     class Transformer
     {
+        private static List<Method> _methodsList = new List<Method>();
+
+        public static List<Method> MethodList { get { return _methodsList; } }
+
         public static void Main(string[] args)
         {
-
-
             // .sln path could contain more than one project
             string pathToSolution = GlobalVariables.PathToSolution;
             //const string pathToSolution = @"C:\Users\IBM\Desktop\roslyn\roslyn-master\roslyn-master\src\Samples\Samples.sln";
@@ -41,7 +43,6 @@ namespace SimpleRoslynAnalysis
         solutionToAnalyze.Projects
                             .Where((proj) => proj.Name == projectName)
                             .FirstOrDefault();
-            List<Method> methodsList = new List<Method>();
 
             // this prints all documents in the project
             foreach (var document in sampleProjectToAnalyze.Documents)
@@ -124,7 +125,7 @@ namespace SimpleRoslynAnalysis
 
                         if (!methodObject.Comment.Contains(GlobalVariables.ignore_transform) && methodObject.Visibility.Trim().ToLower() == "public")
                         {
-                            methodsList.Add(methodObject);
+                            _methodsList.Add(methodObject);
                         }
                         //Console.WriteLine("the number of if " + ifStatements.Count() + " the number of overall statemenets " + statements.Count());
                     }
@@ -132,8 +133,8 @@ namespace SimpleRoslynAnalysis
 
 
             }// done looping the documents
-            Console.WriteLine("Number of methods in the first list " + methodsList.Count());
-            ResponceCodes.SetResponseSettings(GlobalVariables.ResponseCode, methodsList.Count());
+            Console.WriteLine("Number of methods in the first list " + _methodsList.Count());
+            ResponceCodes.SetResponseSettings(GlobalVariables.ResponseCode, _methodsList.Count());
             // start of phase two:
             // step 2 
             // parse the pex report 
@@ -146,7 +147,7 @@ namespace SimpleRoslynAnalysis
             foreach (Exploration exp in explorations)
             {
                 //Console.WriteLine(exp.getFullName());
-                Method result = methodsList.FirstOrDefault(s => s.Id == exp.FullFunctionName);
+                Method result = _methodsList.FirstOrDefault(s => s.Id == exp.FullFunctionName);
                 // this can be null when the method is not in the list (ignored for instance)
                 if (result != null)
                 {
@@ -157,21 +158,21 @@ namespace SimpleRoslynAnalysis
                 }
             }
 
-            var funtionsWithTests = methodsList.Where(s => explorations.Where(e => e.FullFunctionName == s.Id).FirstOrDefault() != null).ToList();
+            var funtionsWithTests = _methodsList.Where(s => explorations.Where(e => e.FullFunctionName == s.Id).FirstOrDefault() != null).ToList();
 
-            var explorationsWithTests = explorations.Where(e => methodsList.Where(s => s.Id == e.FullFunctionName).FirstOrDefault() != null).ToList();
+            var explorationsWithTests = explorations.Where(e => _methodsList.Where(s => s.Id == e.FullFunctionName).FirstOrDefault() != null).ToList();
 
             Console.WriteLine("total Number of methods with explorations found " + explorations.Count() + " merged with methods " + funtionsWithTests.Count);
 
             // 2.1- shuffle the list of methods
             // can use shuffle or shuffle 2
-            methodsList.Shuffle();
+            _methodsList.Shuffle();
             // 2.2- create the checking network
             // dictonary the key is the checking function name and the value is the checked one 
             // value cannot be a void method??
 
             //NETWORK GENERATION!!!
-            var checkingNetwork = NetworkGenerator.GenerateCheckingNetwork(methodsList);
+            var checkingNetwork = NetworkGenerator.GenerateCheckingNetwork(_methodsList);
             
             //methodsList.Print();
             Console.WriteLine("Netwrork of all methods");
