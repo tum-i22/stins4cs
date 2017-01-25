@@ -20,18 +20,18 @@ namespace SimpleRoslynAnalysis
             fullNetworks = methodsWithChallengeCodeCount / GlobalVariables.NODES_NETWORK;
             nodesInPartialNetworks = methodsWithChallengeCodeCount % GlobalVariables.NODES_NETWORK;
 
-            if (!GlobalVariables.UsePrimitiveCombination && !GlobalVariables.NonCyclicNetworks)
+            if (!GlobalVariables.NonCyclicNetworks)
             {
                 return NEW_GenerateCyclicCheckingNetwork(methodsList);
             }
-            else if (GlobalVariables.NonCyclicNetworks)
+            else
             {
                 return GenerateNonCyclicCheckingNetworks(methodsList);
             }
-            else
+            /*else
             {
                 return GenerateCyclicCheckingNetworks(methodsList);
-            }
+            }*/
 
         }
 

@@ -247,8 +247,11 @@ namespace SimpleRoslynAnalysis
 
                     if (!(codeLine.Trim().Count() == 0))
                     {
-
-                        if (Types.primitiveTypes.Any(str => codeLine.Trim().StartsWith(str)))// this is a primitive declaration
+                        if (PrimitiveTypes.PrimitiveTypesList.Any(
+                            type => codeLine.Trim().StartsWith(type.Type) || 
+                            codeLine.Trim().StartsWith(type.FullCliType) ||
+                            codeLine.Trim().StartsWith(type.CliType)
+                            ))// this is a primitive declaration
                         {
                             if ((ResponceCodes.ResponseSecondOption == ResponceCodes.RESPONSE_CODE_2 || ResponceCodes.ResponseFirstOption == ResponceCodes.RESPONSE_CODE_2) && GlobalVariables.UsePrimitiveCombination)
                             { // we have primitive declration, we have the one of the options to crash and the option is enabled
@@ -266,9 +269,6 @@ namespace SimpleRoslynAnalysis
                                 declarationStatement = codeLine + "= " + result + ";";
                                 codeLine = "";
                             }
-
-
-
                         }
 
                         //handling of THIS statement

@@ -115,7 +115,7 @@ namespace SimpleRoslynAnalysis.Properties {
         
         [global::System.Configuration.ApplicationScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
         public bool UseprimitiveCombination {
             get {
                 return ((bool)(this["UseprimitiveCombination"]));
@@ -146,6 +146,15 @@ namespace SimpleRoslynAnalysis.Properties {
         public bool NonCyclicNetwork {
             get {
                 return ((bool)(this["NonCyclicNetwork"]));
+            }
+        }
+        
+        [global::System.Configuration.ApplicationScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool MigalHighlightChecks {
+            get {
+                return ((bool)(this["MigalHighlightChecks"]));
             }
         }
     }

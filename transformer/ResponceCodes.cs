@@ -103,9 +103,12 @@ namespace SimpleRoslynAnalysis
             //}
 
             int lastSemiColonIndex = value.LastIndexOf(';');
-            value = value.Substring(0, lastSemiColonIndex + 1) + "\n}";
 
-
+            //challenge code has several ifs -> each one should be handled.
+            if(GlobalVariables.NonCyclicNetworks)
+                value = value.Substring(0, lastSemiColonIndex + 1) + "\n";
+            else
+                value = value.Substring(0, lastSemiColonIndex + 1) + "\n}";
 
             return value;
         }

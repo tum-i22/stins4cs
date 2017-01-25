@@ -347,7 +347,16 @@ namespace SimpleRoslynAnalysis
                 foreach (ReturnStatementSyntax returnStm in returnStatements)
                 {
                     string originalReturn = returnStm.GetText().ToString().Trim().Trim(new char[] { ';' });
-                    string newReturnStr = originalReturn + checkedMethod.CombinedReturnStatement;
+                    string newReturnStr;
+                    if (checkedMethod.CombinedReturnStatement.StartsWith(" + ") && newMethod.ReturnType.ToFullString() != PrimitiveTypes.Int)
+                    {
+                        originalReturn = originalReturn.Replace("return ", "");
+                        newReturnStr = String.Format("return ({0})({1})", newMethod.ReturnType.ToFullString(), originalReturn + checkedMethod.CombinedReturnStatement);
+                    }
+                    else
+                    {
+                        newReturnStr = originalReturn + checkedMethod.CombinedReturnStatement;
+                    }
                     if (currMethod.ReturnType.GetText().ToString().Trim() == "char")
                     {
                         // if the parent is char we have to add a cast here, cannot be done else where 
