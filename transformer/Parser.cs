@@ -141,7 +141,7 @@ namespace SimpleRoslynAnalysis
                 string variableName = "s0"; // normally its s0 unless we are in the special case of using
 
                 //variable under test is not always called s0.
-                //find the varibale and change the name of the variable to search for
+                //find the variable and change the name of the variable to search for
                 //otherwise leave as is
                 var varDeclarator = SyntaxFactory.ParseStatement(codeStatements[0]).DescendantNodes().OfType<VariableDeclaratorSyntax>().FirstOrDefault();
                 if(varDeclarator != null)
@@ -244,30 +244,38 @@ namespace SimpleRoslynAnalysis
 
                     }
 
-
+                    //if line not empty
                     if (!(codeLine.Trim().Count() == 0))
                     {
-                        if (PrimitiveTypes.PrimitiveTypesList.Any(
-                            type => codeLine.Trim().StartsWith(type.Type) || 
-                            codeLine.Trim().StartsWith(type.FullCliType) ||
-                            codeLine.Trim().StartsWith(type.CliType)
-                            ))// this is a primitive declaration
+                        var hasDeclaration = RoslynExtensions.StatementHas<VariableDeclarationSyntax>(codeLine);
+                        if (hasDeclaration)
                         {
-                            if ((ResponceCodes.ResponseSecondOption == ResponceCodes.RESPONSE_CODE_2 || ResponceCodes.ResponseFirstOption == ResponceCodes.RESPONSE_CODE_2) && GlobalVariables.UsePrimitiveCombination)
-                            { // we have primitive declration, we have the one of the options to crash and the option is enabled
-                              // then we will be moving this declration even if it was not used in the primitive combination
+                            var variableDeclarationSyntaxNode = RoslynExtensions.GetSyntaxNode<VariableDeclarationSyntax>(codeLine).First();
+                            var variableType = variableDeclarationSyntaxNode.GetVariableDeclarationType();
 
-                                primitiveTransformation = true;
-                                codeLine = codeLine.Trim(new char[] { ';', ' ' });
-                                string[] parts = codeLine.Split(' ');
-                                explorationObject.variableName = parts[1];
-                                if (parts[0].Trim() == "float")
-                                {
-                                    result = result + "f";
+                            if (PrimitiveTypes.IsPrimitive(variableType))// this is a primitive declaration
+                            {
+                                if ((ResponceCodes.ResponseSecondOption == ResponceCodes.RESPONSE_CODE_2 || ResponceCodes.ResponseFirstOption == ResponceCodes.RESPONSE_CODE_2) && GlobalVariables.UsePrimitiveCombination)
+                                { // we have primitive declration, we have the one of the options to crash and the option is enabled
+                                  // then we will be moving this declration even if it was not used in the primitive combination
 
+                                    primitiveTransformation = true;
+                                    var declaredVariableName = variableDeclarationSyntaxNode.GetVariableDeclarationName();
+                                    explorationObject.variableName = declaredVariableName;
+
+                                    primitiveTransformation = true;
+
+                                    //remove white-spaces and ; from a codeline
+                                    codeLine = codeLine.Trim(new char[] { ';', ' ' });
+
+                                    if (variableType == PrimitiveTypes.Float.Type)
+                                    {
+                                        result = result + "f";
+
+                                    }
+                                    declarationStatement = String.Format("{0} {1} = {2};", variableType, declaredVariableName, result);
+                                    codeLine = "";
                                 }
-                                declarationStatement = codeLine + "= " + result + ";";
-                                codeLine = "";
                             }
                         }
 
@@ -277,18 +285,17 @@ namespace SimpleRoslynAnalysis
                             codeLine = HandleThisStatement(codeLine, variableName, explorationObject);
                         }
 
-                        if(codeLine.Contains("PexSafeHelpers"))
-                        {
-                            codeLine = HandlePexSafeHelpers(codeLine);
-                        }
-
 
                         if (codeLine.Contains("Assert."))// this is the check statement
                         {
                             codeLine = HandleAssertStatement(codeLine,codeStatements);   
                         }
 
-                        
+                        if (codeLine.Contains("PexSafeHelpers"))
+                        {
+                            codeLine = HandlePexSafeHelpers(codeLine);
+                        }
+
                         //case: byteBuffer.Get02((byte[])null, 0, 0); -> Function has numeric characters
                         Regex regex = new Regex("[a-zA-Z]+[0-9]+");
                         Match match = regex.Match(codeLine);

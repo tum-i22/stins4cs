@@ -108,7 +108,7 @@ namespace SimpleRoslynAnalysis
             if(GlobalVariables.NonCyclicNetworks)
                 value = value.Substring(0, lastSemiColonIndex + 1) + "\n";
             else
-                value = value.Substring(0, lastSemiColonIndex + 1) + "\n}";
+                value = value.Substring(0, lastSemiColonIndex + 1) + "\n}\n";
 
             return value;
         }
@@ -158,9 +158,32 @@ namespace SimpleRoslynAnalysis
                 value = value.Replace("RESPONSE", ResponceCodes.GetResponse(i, checkedMethod.Id));
             }
 
+            value = HighlightCheck(value, checkedMethod.PrimitiveCombination);
+
             checkedMethod.ChallengeCode = value;
 
             return checkedMethod;
+        }
+
+        private static string HighlightCheck(string value, bool primitiveCombination)
+        {
+            if (GlobalVariables.HighlightChecksForAnalysis)
+            {
+                var flagStart = "\nSystem.Console.WriteLine(\"CheckStarted\");\n";
+                var flagEnd = "\nSystem.Console.WriteLine(\"CheckEnded\");\n";
+
+                if (primitiveCombination)
+                {
+                    var index = value.IndexOf(";") + 2; // ;\n = 3 chars
+                    value = (value.Insert(index,flagStart)) + flagEnd;
+                }
+                else
+                {
+                    value = flagStart + value + flagEnd;
+                }
+            }
+
+            return value;
         }
     }
 }

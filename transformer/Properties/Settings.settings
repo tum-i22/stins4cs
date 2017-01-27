@@ -44,7 +44,7 @@
     <Setting Name="NonCyclicNetwork" Type="System.Boolean" Scope="Application">
       <Value Profile="(Default)">True</Value>
     </Setting>
-    <Setting Name="MigalHighlightChecks" Type="System.Boolean" Scope="Application">
+    <Setting Name="HighlightChecksForAnalysis" Type="System.Boolean" Scope="Application">
       <Value Profile="(Default)">True</Value>
     </Setting>
   </Settings>

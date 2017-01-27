@@ -152,9 +152,9 @@ namespace SimpleRoslynAnalysis.Properties {
         [global::System.Configuration.ApplicationScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("True")]
-        public bool MigalHighlightChecks {
+        public bool HighlightChecksForAnalysis {
             get {
-                return ((bool)(this["MigalHighlightChecks"]));
+                return ((bool)(this["HighlightChecksForAnalysis"]));
             }
         }
     }

@@ -357,7 +357,7 @@ namespace SimpleRoslynAnalysis
                     {
                         newReturnStr = originalReturn + checkedMethod.CombinedReturnStatement;
                     }
-                    if (currMethod.ReturnType.GetText().ToString().Trim() == "char")
+                    if (currMethod.ReturnType.GetText().ToString().Trim() == PrimitiveTypes.Char)
                     {
                         // if the parent is char we have to add a cast here, cannot be done else where 
                         string[] parts = newReturnStr.Trim().Split(' ');

@@ -38,7 +38,7 @@ namespace SimpleRoslynAnalysis
 
         internal static bool NonCyclicNetworks {  get { return (bool)Properties.Settings.Default["NonCyclicNetwork"]; } }
 
-        internal static bool MigalHighlightChecks { get { return (bool)Properties.Settings.Default["MigalHighlightChecks"]; } }
+        internal static bool HighlightChecksForAnalysis { get { return (bool)Properties.Settings.Default["HighlightChecksForAnalysis"]; } }
 
     }
 }
